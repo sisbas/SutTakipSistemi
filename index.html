@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Süt Takip Sistemi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log("SW kayıt başarılı"))
+        .catch(err => console.log("SW kayıt hatası:", err));
+    }
+  </script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f0f0f0; max-width: 500px; margin: auto; }
+    h2 { text-align: center; }
+    label, select, input, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 10px;
+      font-size: 1rem;
+    }
+    button { background: #4CAF50; color: white; border: none; cursor: pointer; }
+    #durum { text-align: center; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Süt Takip Sistemi</h2>
+  <label for="koy">Köy Seç:</label>
+  <select id="koy" onchange="guncelleMusta()">
+    <option value="">Seçiniz</option>
+    <option value="Köy 1">Köy 1</option>
+    <option value="Köy 2">Köy 2</option>
+    <option value="Köy 3">Köy 3</option>
+    <option value="Köy 4">Köy 4</option>
+  </select>
+  <label for="musta">Müstahsil:</label>
+  <select id="musta"></select>
+  <label for="ogun">Öğün:</label>
+  <select id="ogun">
+    <option value="Sabah">Sabah</option>
+    <option value="Akşam">Akşam</option>
+  </select>
+  <label for="miktar">Süt Miktarı (L):</label>
+  <input type="number" id="miktar" step="0.1" min="0">
+  <button onclick="gonder()">Kaydet</button>
+  <p id="durum"></p>
+  <script>
+    const token = "patdVebxph6wUC9cY.c55631b4f88e7a3834438a9e5b8687dd4e3ba8bd2c02a6eeb0976b7487c41fe5";
+    const tabloYapisi = {
+      "Köy 1": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
+      "Köy 2": { baseId: "appnyLWbiWXeSYWX8", tablo: "Tablo2" },
+      "Köy 3": { baseId: "apphfqdkNAjQlod0C", tablo: "Tablo3" },
+      "Köy 4": { baseId: "app1oITnidTYLoyn0", tablo: "Tablo4" }
+    };
+    const mustahsilListesi = {
+      "Köy 1": ["Ayhan","Süleyman","Engin","Selahattin","Nevzat","Gökmen","A. Gökdağ","Hüsnü","İsmail","Emine","Berrin","Bayramalı","Kemal","Şükriye Can","İ. Duraklı","M. Bayraktar","Mithat","Necati","A. Yalçın","Bilgin","Necami","H. Büyer","A. Yüksel","Ergin"],
+      "Köy 2": ["Ahmet","Emrah","Ümit","Ender","Mehmet","Okan","Hakan","Cemalettin","Hulisi","Fikret"],
+      "Köy 3": ["H. Boz","Nadir","Nejat","A. Durmuş","Ö. Durmuş","Harun","Rüstem","Üsret","Sevim","Güray","A. Kahveci","A. Çetin","Nazlı","Rasit","Zerrin"],
+      "Köy 4": ["C. Kaçan","İt. Kontor","Mükrinat","M. Yıldız","M. Şahin","Zeki","Vasif","S. Ayalın","Sevgi","A. Aydın","M. Aydın"]
+    };
+    function guncelleMusta() {
+      const koy = document.getElementById("koy").value;
+      const mustaSelect = document.getElementById("musta");
+      mustaSelect.innerHTML = "";
+      if (koy && mustahsilListesi[koy]) {
+        mustahsilListesi[koy].forEach(ad => {
+          const opt = document.createElement("option");
+          opt.textContent = ad;
+          mustaSelect.appendChild(opt);
+        });
+      }
+    }
+    async function gonder() {
+      const koy = document.getElementById("koy").value;
+      const musta = document.getElementById("musta").value;
+      const ogun = document.getElementById("ogun").value;
+      const miktar = parseFloat(document.getElementById("miktar").value);
+      const durum = document.getElementById("durum");
+      if (!koy || !musta || !ogun || isNaN(miktar)) {
+        durum.textContent = "Lütfen tüm alanları doldurun.";
+        durum.style.color = "red";
+        return;
+      }
+      const { baseId, tablo } = tabloYapisi[koy];
+      const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tablo)}`;
+      const veri = {
+        records: [{
+          fields: {
+            "Müstahsil Adı": musta,
+            "Tarih": new Date().toISOString().split("T")[0],
+            "Sabah Süt (L)": ogun === "Sabah" ? miktar : 0,
+            "Akşam Süt (L)": ogun === "Akşam" ? miktar : 0,
+            "Toplam Süt (L)": miktar,
+            "Kayıt Tarihi": new Date().toISOString()
+          }
+        }]
+      };
+      try {
+        const yanit = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(veri)
+        });
+        if (yanit.ok) {
+          durum.textContent = "✅ Kayıt başarılı!";
+          durum.style.color = "green";
+          document.getElementById("miktar").value = "";
+        } else {
+          const hata = await yanit.text();
+          durum.textContent = "⚠️ Hata: " + hata;
+          durum.style.color = "red";
+        }
+      } catch (err) {
+        durum.textContent = "⚠️ Sunucu hatası: " + err.message;
+        durum.style.color = "red";
+      }
+    }
+  </script>
+</body>
+</html>
