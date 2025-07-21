@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Süt Takip Rapor Paneli</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
+    }
+  </script>
+  <style>
+    body { font-family: sans-serif; background: #eef2f3; text-align: center; padding: 2rem; }
+    h1 { color: #4a00e0; }
+    .button { background: #4a00e0; color: white; padding: 1rem 2rem; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Süt Takip Paneli</h1>
+  <p>Bu örnek PWA panelidir. Gerçek zamanlı süt raporları için genişletilecektir.</p>
+  <a href="#" class="button">Raporlara Git</a>
+</body>
+</html>
