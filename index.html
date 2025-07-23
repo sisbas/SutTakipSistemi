@@ -2,125 +2,618 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Süt Takip Sistemi</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="manifest.json">
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(() => console.log("SW kayıt başarılı"))
-        .catch(err => console.log("SW kayıt hatası:", err));
-    }
-  </script>
+  <meta name="description" content="Modern süt üretimi takip ve raporlama sistemi">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/favicon.ico" type="image/x-icon">
+  <meta name="theme-color" content="#4CAF50">
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f0f0f0; max-width: 500px; margin: auto; }
-    h2 { text-align: center; }
-    label, select, input, button {
-      display: block;
-      width: 100%;
-      margin-bottom: 15px;
-      padding: 10px;
-      font-size: 1rem;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
     }
-    button { background: #4CAF50; color: white; border: none; cursor: pointer; }
-    #durum { text-align: center; font-weight: bold; }
+    .container { 
+      max-width: 1200px; 
+      margin: auto; 
+      background: white; 
+      border-radius: 15px; 
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+    .header p { opacity: 0.9; font-size: 1.1rem; }
+    
+    .nav-tabs {
+      display: flex;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+      flex-wrap: wrap;
+    }
+    .nav-tab {
+      flex: 1;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+      background: none;
+      font-size: 1rem;
+      min-width: 120px;
+    }
+    .nav-tab:hover { background: #e9ecef; }
+    .nav-tab.active { 
+      background: #4CAF50; 
+      color: white; 
+      font-weight: bold;
+    }
+    
+    .tab-content { display: none; padding: 30px; }
+    .tab-content.active { display: block; }
+    
+    .form-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .form-group label {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .form-group select,
+    .form-group input {
+      padding: 12px;
+      border: 2px solid #e1e5e9;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+    .form-group select:focus,
+    .form-group input:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin: 5px;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 15px rgba(76, 175, 80, 0.3);
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d, #5a6268);
+    }
+    .btn-secondary:hover {
+      box-shadow: 0 8px 15px rgba(108, 117, 125, 0.3);
+    }
+    
+    .status-message {
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .status-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .stat-label {
+      opacity: 0.9;
+      font-size: 0.9rem;
+    }
+    
+    .online-status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 1000;
+    }
+    
+    .install-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: none;
+    }
+    
+    @media (max-width: 768px) {
+      .nav-tabs { flex-direction: column; }
+      .form-section { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .header h1 { font-size: 1.8rem; }
+      .container { margin: 10px; border-radius: 10px; }
+    }
   </style>
 </head>
 <body>
-  <h2>Süt Takip Sistemi</h2>
-  <label for="koy">Köy Seç:</label>
-  <select id="koy" onchange="guncelleMusta()">
-    <option value="">Seçiniz</option>
-    <option value="Köy 1">Köy 1</option>
-    <option value="Köy 2">Köy 2</option>
-    <option value="Köy 3">Köy 3</option>
-    <option value="Köy 4">Köy 4</option>
-  </select>
-  <label for="musta">Müstahsil:</label>
-  <select id="musta"></select>
-  <label for="ogun">Öğün:</label>
-  <select id="ogun">
-    <option value="Sabah">Sabah</option>
-    <option value="Akşam">Akşam</option>
-  </select>
-  <label for="miktar">Süt Miktarı (L):</label>
-  <input type="number" id="miktar" step="0.1" min="0">
-  <button onclick="gonder()">Kaydet</button>
-  <p id="durum"></p>
+  <div class="online-status" id="networkStatus">
+    <span id="statusText">Kontrol ediliyor...</span>
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <h1>🥛 Süt Takip Sistemi</h1>
+      <p>Modern süt üretimi takip ve raporlama paneli</p>
+    </div>
+    
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('veri-girisi')">📝 Veri Girişi</button>
+      <button class="nav-tab" onclick="window.location.href='/raporlar'">📊 Raporlar</button>
+      <button class="nav-tab" onclick="switchTab('analiz')">📈 Analiz</button>
+      <button class="nav-tab" onclick="switchTab('ayarlar')">⚙️ Ayarlar</button>
+    </div>
+    
+    <!-- VERİ GİRİŞİ TAB -->
+    <div id="veri-girisi" class="tab-content active">
+      <h2>Süt Üretimi Kaydı</h2>
+      
+      <div class="form-section">
+        <div class="form-group">
+          <label for="koy">Köy Seçiniz:</label>
+          <select id="koy" onchange="guncelleMusta()">
+            <option value="">Seçiniz</option>
+            <option value="Köy 1">Köy 1</option>
+            <option value="Köy 2">Köy 2</option>
+            <option value="Köy 3">Köy 3</option>
+            <option value="Köy 4">Köy 4</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="musta">Müstahsil:</label>
+          <select id="musta">
+            <option value="">Önce köy seçiniz</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="tarih">Tarih:</label>
+          <input type="date" id="tarih">
+        </div>
+        
+        <div class="form-group">
+          <label for="ogun">Öğün:</label>
+          <select id="ogun">
+            <option value="Sabah">🌅 Sabah</option>
+            <option value="Akşam">🌆 Akşam</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-section">
+        <div class="form-group">
+          <label for="miktar">Süt Miktarı (Litre):</label>
+          <input type="number" id="miktar" step="0.1" min="0" placeholder="0.0">
+        </div>
+        
+        <div class="form-group">
+          <label for="yag-orani">Yağ Oranı (%):</label>
+          <input type="number" id="yag-orani" step="0.1" min="0" max="10" placeholder="3.5">
+        </div>
+        
+        <div class="form-group">
+          <label for="protein-orani">Protein Oranı (%):</label>
+          <input type="number" id="protein-orani" step="0.1" min="0" max="5" placeholder="3.2">
+        </div>
+        
+        <div class="form-group">
+          <label for="sicaklik">Sıcaklık (°C):</label>
+          <input type="number" id="sicaklik" step="0.1" min="0" max="45" placeholder="4.0">
+        </div>
+      </div>
+      
+      <div style="text-align: center;">
+        <button class="btn" onclick="kaydetVeri()">💾 Kaydet</button>
+        <button class="btn btn-secondary" onclick="temizleForm()">🧹 Temizle</button>
+      </div>
+      
+      <div id="durum"></div>
+    </div>
+    
+    <!-- ANALİZ TAB -->
+    <div id="analiz" class="tab-content">
+      <h2>Hızlı İstatistikler</h2>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="bugun-toplam">0</div>
+          <div class="stat-label">Bugün Toplam (L)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="hafta-toplam">0</div>
+          <div class="stat-label">Bu Hafta (L)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="ay-toplam">0</div>
+          <div class="stat-label">Bu Ay (L)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="ortalama-yag">0</div>
+          <div class="stat-label">Ort. Yağ Oranı (%)</div>
+        </div>
+      </div>
+      
+      <div style="text-align: center;">
+        <button class="btn" onclick="window.location.href='/raporlar'">📊 Detaylı Raporlar</button>
+      </div>
+    </div>
+    
+    <!-- AYARLAR TAB -->
+    <div id="ayarlar" class="tab-content">
+      <h2>Sistem Ayarları</h2>
+      
+      <div class="form-section">
+        <div class="form-group">
+          <label>Airtable API Token:</label>
+          <input type="password" id="api-token" placeholder="Token giriniz">
+        </div>
+        
+        <div class="form-group">
+          <label>Base ID:</label>
+          <input type="text" id="base-id" placeholder="Base ID giriniz">
+        </div>
+      </div>
+      
+      <div style="text-align: center;">
+        <button class="btn" onclick="ayarlariKaydet()">💾 Ayarları Kaydet</button>
+        <button class="btn btn-secondary" onclick="verileriYedekle()">💾 Veri Yedekle</button>
+      </div>
+      
+      <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <h3>Sistem Durumu</h3>
+        <p><strong>Toplam Kayıt:</strong> <span id="toplam-kayit">0</span></p>
+        <p><strong>Son Güncelleme:</strong> <span id="son-guncelleme">-</span></p>
+        <p><strong>Depolama Kullanımı:</strong> <span id="depolama-kullanim">0 KB</span></p>
+        <p><strong>Versiyon:</strong> v2.0.0</p>
+      </div>
+    </div>
+  </div>
+  
+  <button id="installButton" class="btn install-btn">
+    📱 Uygulamayı Yükle
+  </button>
+  
   <script>
-    const token = "patdVebxph6wUC9cY.c55631b4f88e7a3834438a9e5b8687dd4e3ba8bd2c02a6eeb0976b7487c41fe5";
-    const tabloYapisi = {
-      "Köy 1": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
-      "Köy 2": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo2" },
-      "Köy 3": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo3" },
-      "Köy 4": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo4" }
+    // Sabitler ve yapılandırma
+    const CONFIG = {
+      TOKEN: "patdVebxph6wUC9cY.c55631b4f88e7a3834438a9e5b8687dd4e3ba8bd2c02a6eeb0976b7487c41fe5",
+      TABLO_YAPISI: {
+        "Köy 1": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
+        "Köy 2": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
+        "Köy 3": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
+        "Köy 4": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" }
+      },
+      MUSTAHSIL_LISTESI: {
+        "Köy 1": ["Ayhan","Süleyman","Engin","Selahattin","Nevzat","Gökmen","A. Gökdağ","Hüsnü","İsmail","Emine","Berrin","Bayramalı","Kemal","Şükriye Can","İ. Duraklı","M. Bayraktar","Mithat","Necati","A. Yalçın","Bilgin","Necami","H. Büyer","A. Yüksel","Ergin"],
+        "Köy 2": ["Ahmet","Emrah","Ümit","Ender","Mehmet","Okan","Hakan","Cemalettin","Hulisi","Fikret"],
+        "Köy 3": ["H. Boz","Nadir","Nejat","A. Durmuş","Ö. Durmuş","Harun","Rüstem","Üsret","Sevim","Güray","A. Kahveci","A. Çetin","Nazlı","Rasit","Zerrin"],
+        "Köy 4": ["C. Kaçan","İt. Kontor","Mükrinat","M. Yıldız","M. Şahin","Zeki","Vasif","S. Ayalın","Sevgi","A. Aydın","M. Aydın"]
+      }
     };
-    const mustahsilListesi = {
-      "Köy 1": ["Ayhan","Süleyman","Engin","Selahattin","Nevzat","Gökmen","A. Gökdağ","Hüsnü","İsmail","Emine","Berrin","Bayramalı","Kemal","Şükriye Can","İ. Duraklı","M. Bayraktar","Mithat","Necati","A. Yalçın","Bilgin","Necami","H. Büyer","A. Yüksel","Ergin"],
-      "Köy 2": ["Ahmet","Emrah","Ümit","Ender","Mehmet","Okan","Hakan","Cemalettin","Hulisi","Fikret"],
-      "Köy 3": ["H. Boz","Nadir","Nejat","A. Durmuş","Ö. Durmuş","Harun","Rüstem","Üsret","Sevim","Güray","A. Kahveci","A. Çetin","Nazlı","Rasit","Zerrin"],
-      "Köy 4": ["C. Kaçan","İt. Kontor","Mükrinat","M. Yıldız","M. Şahin","Zeki","Vasif","S. Ayalın","Sevgi","A. Aydın","M. Aydın"]
-    };
+    
+    // Veri depolama
+    let sutVerileri = JSON.parse(localStorage.getItem('sutVerileri') || '[]');
+    
+    // DOM yüklendiğinde
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('tarih').value = new Date().toISOString().split('T')[0];
+      istatistikleriGuncelle();
+      sistemDurumunuGuncelle();
+      networkStatusUpdate();
+      
+      // Service Worker kayıt
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(() => console.log('SW kayıt başarılı'))
+          .catch(err => console.log('SW kayıt hatası:', err));
+      }
+    });
+    
+    // Tab değiştirme
+    function switchTab(tabName) {
+      document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById(tabName).classList.add('active');
+    }
+    
+    // Müstahsil listesini güncelle
     function guncelleMusta() {
       const koy = document.getElementById("koy").value;
       const mustaSelect = document.getElementById("musta");
-      mustaSelect.innerHTML = "";
-      if (koy && mustahsilListesi[koy]) {
-        mustahsilListesi[koy].forEach(ad => {
+      mustaSelect.innerHTML = '<option value="">Seçiniz</option>';
+      
+      if (koy && CONFIG.MUSTAHSIL_LISTESI[koy]) {
+        CONFIG.MUSTAHSIL_LISTESI[koy].forEach(ad => {
           const opt = document.createElement("option");
+          opt.value = ad;
           opt.textContent = ad;
           mustaSelect.appendChild(opt);
         });
       }
     }
-    async function gonder() {
-      const koy = document.getElementById("koy").value;
-      const musta = document.getElementById("musta").value;
-      const ogun = document.getElementById("ogun").value;
-      const miktar = parseFloat(document.getElementById("miktar").value);
-      const durum = document.getElementById("durum");
-      if (!koy || !musta || !ogun || isNaN(miktar)) {
-        durum.textContent = "Lütfen tüm alanları doldurun.";
-        durum.style.color = "red";
+    
+    // Veri kaydetme
+    async function kaydetVeri() {
+      const formData = {
+        koy: document.getElementById("koy").value,
+        musta: document.getElementById("musta").value,
+        tarih: document.getElementById("tarih").value,
+        ogun: document.getElementById("ogun").value,
+        miktar: parseFloat(document.getElementById("miktar").value),
+        yagOrani: parseFloat(document.getElementById("yag-orani").value) || 0,
+        proteinOrani: parseFloat(document.getElementById("protein-orani").value) || 0,
+        sicaklik: parseFloat(document.getElementById("sicaklik").value) || 0
+      };
+      
+      // Validasyon
+      if (!formData.koy || !formData.musta || !formData.tarih || !formData.ogun || isNaN(formData.miktar)) {
+        gosterMesaj("Lütfen zorunlu alanları doldurun.", "error");
         return;
       }
-      const { baseId, tablo } = tabloYapisi[koy];
+      
+      // Yerel kayıt
+      const yeniKayit = {
+        id: Date.now(),
+        ...formData,
+        kayitTarihi: new Date().toISOString()
+      };
+      
+      sutVerileri.push(yeniKayit);
+      localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
+      
+      // Airtable'a kaydet
+      try {
+        if (navigator.onLine) {
+          await airtableKaydet(formData);
+          gosterMesaj("✅ Kayıt başarıyla tamamlandı!", "success");
+        } else {
+          gosterMesaj("📱 Offline kaydedildi, çevrimiçi olduğunuzda senkronize edilecek.", "success");
+        }
+        
+        temizleForm();
+        istatistikleriGuncelle();
+        sistemDurumunuGuncelle();
+        
+      } catch (err) {
+        gosterMesaj("⚠️ Sunucu hatası: " + err.message, "error");
+      }
+    }
+    
+    // Airtable kayıt fonksiyonu
+    async function airtableKaydet(formData) {
+      const { baseId, tablo } = CONFIG.TABLO_YAPISI[formData.koy];
       const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tablo)}`;
+      
       const veri = {
         records: [{
           fields: {
-            "Müstahsil Adı": musta,
-            "Tarih": new Date().toISOString().split("T")[0],
-            "Sabah Süt (L)": ogun === "Sabah" ? miktar : 0,
-            "Akşam Süt (L)": ogun === "Akşam" ? miktar : 0,
-            "Toplam Süt (L)": miktar,
+            "Müstahsil Adı": formData.musta,
+            "Tarih": formData.tarih,
+            "Sabah Süt (L)": formData.ogun === "Sabah" ? formData.miktar : 0,
+            "Akşam Süt (L)": formData.ogun === "Akşam" ? formData.miktar : 0,
+            "Toplam Süt (L)": formData.miktar,
+            "Yağ Oranı": formData.yagOrani,
+            "Protein Oranı": formData.proteinOrani,
+            "Sıcaklık": formData.sicaklik,
             "Kayıt Tarihi": new Date().toISOString()
           }
         }]
       };
-      try {
-        const yanit = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(veri)
-        });
-        if (yanit.ok) {
-          durum.textContent = "✅ Kayıt başarılı!";
-          durum.style.color = "green";
-          document.getElementById("miktar").value = "";
-        } else {
-          const hata = await yanit.text();
-          durum.textContent = "⚠️ Hata: " + hata;
-          durum.style.color = "red";
-        }
-      } catch (err) {
-        durum.textContent = "⚠️ Sunucu hatası: " + err.message;
-        durum.style.color = "red";
+      
+      const yanit = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + CONFIG.TOKEN,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(veri)
+      });
+      
+      if (!yanit.ok) {
+        throw new Error(`HTTP ${yanit.status}`);
       }
     }
+    
+    // Form temizleme
+    function temizleForm() {
+      document.getElementById("miktar").value = "";
+      document.getElementById("yag-orani").value = "";
+      document.getElementById("protein-orani").value = "";
+      document.getElementById("sicaklik").value = "";
+    }
+    
+    // Mesaj gösterme
+    function gosterMesaj(mesaj, tip) {
+      const durum = document.getElementById("durum");
+      durum.innerHTML = `<div class="status-message status-${tip}">${mesaj}</div>`;
+      setTimeout(() => durum.innerHTML = "", 5000);
+    }
+    
+    // İstatistikleri güncelle
+    function istatistikleriGuncelle() {
+      const bugun = new Date().toISOString().split('T')[0];
+      const haftaOnce = new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0];
+      const ayOnce = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+      
+      const bugunToplam = sutVerileri
+        .filter(v => v.tarih === bugun)
+        .reduce((sum, v) => sum + v.miktar, 0);
+      
+      const haftaToplam = sutVerileri
+        .filter(v => v.tarih >= haftaOnce)
+        .reduce((sum, v) => sum + v.miktar, 0);
+      
+      const ayToplam = sutVerileri
+        .filter(v => v.tarih >= ayOnce)
+        .reduce((sum, v) => sum + v.miktar, 0);
+      
+      const ortalamaYag = sutVerileri.length > 0 
+        ? (sutVerileri.reduce((sum, v) => sum + (v.yagOrani || 0), 0) / sutVerileri.length).toFixed(1)
+        : 0;
+      
+      document.getElementById("bugun-toplam").textContent = bugunToplam.toFixed(1);
+      document.getElementById("hafta-toplam").textContent = haftaToplam.toFixed(1);
+      document.getElementById("ay-toplam").textContent = ayToplam.toFixed(1);
+      document.getElementById("ortalama-yag").textContent = ortalamaYag;
+    }
+    
+    // Sistem durumunu güncelle
+    function sistemDurumunuGuncelle() {
+      document.getElementById("toplam-kayit").textContent = sutVerileri.length;
+      
+      const sonGuncelleme = sutVerileri.length > 0 
+        ? new Date(Math.max(...sutVerileri.map(v => new Date(v.kayitTarihi)))).toLocaleString('tr-TR')
+        : "-";
+      document.getElementById("son-guncelleme").textContent = sonGuncelleme;
+      
+      const depolamaKB = Math.round(JSON.stringify(sutVerileri).length / 1024);
+      document.getElementById("depolama-kullanim").textContent = depolamaKB + " KB";
+    }
+    
+    // Ayarları kaydet
+    function ayarlariKaydet() {
+      const apiToken = document.getElementById("api-token").value;
+      const baseId = document.getElementById("base-id").value;
+      
+      if (apiToken) localStorage.setItem('airtable-token', apiToken);
+      if (baseId) localStorage.setItem('airtable-base', baseId);
+      
+      gosterMesaj("Ayarlar kaydedildi.", "success");
+    }
+    
+    // Veri yedekleme
+    function verileriYedekle() {
+      const veriString = JSON.stringify(sutVerileri, null, 2);
+      const blob = new Blob([veriString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sut_verileri_yedek_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      
+      gosterMesaj("Veriler yedeklendi.", "success");
+    }
+    
+    // Network durumu
+    function networkStatusUpdate() {
+      const statusDiv = document.getElementById('networkStatus');
+      const statusText = document.getElementById('statusText');
+      
+      if (navigator.onLine) {
+        statusDiv.style.background = '#4CAF50';
+        statusText.textContent = '🟢 Çevrimiçi';
+      } else {
+        statusDiv.style.background = '#ff9800';
+        statusText.textContent = '🔴 Çevrimdışı';
+      }
+    }
+    
+    window.addEventListener('online', networkStatusUpdate);
+    window.addEventListener('offline', networkStatusUpdate);
+    
+    // PWA Install
+    let deferredPrompt;
+    const installButton = document.getElementById('installButton');
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installButton.style.display = 'block';
+    });
+    
+    installButton.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+          console.log('PWA yüklendi');
+        }
+        
+        deferredPrompt = null;
+        installButton.style.display = 'none';
+      }
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        kaydetVeri();
+      }
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        temizleForm();
+        document.getElementById('koy').focus();
+      }
+      if (e.key === 'Escape') {
+        temizleForm();
+      }
+    });
+    
+    console.log("🥛 Süt Takip Sistemi v2.0 - Netlify Edition yüklendi!");
   </script>
 </body>
-</html>
+</html
