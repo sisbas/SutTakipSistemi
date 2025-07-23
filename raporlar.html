@@ -670,4 +670,308 @@
     // Dağılım grafiği
     function dagılımGrafigiCiz() {
       const canvas = document.getElementById('dagılımGrafik');
-      const ctx = canvas.
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Köy bazında toplam üretim
+      const koyVerileri = {};
+      filtreliVeriler.forEach(veri => {
+        if (!koyVerileri[veri.koy]) {
+          koyVerileri[veri.koy] = 0;
+        }
+        koyVerileri[veri.koy] += veri.miktar;
+      });
+      
+      const koyler = Object.keys(koyVerileri);
+      if (koyler.length === 0) {
+        ctx.fillStyle = '#666';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Veri bulunamadı', canvas.width/2, canvas.height/2);
+        return;
+      }
+      
+      const renkler = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0'];
+      const padding = 60;
+      const barGenislik = (canvas.width - 2 * padding) / koyler.length * 0.8;
+      const maxDeger = Math.max(...Object.values(koyVerileri));
+      const grafik_yukseklik = canvas.height - 2 * padding;
+      
+      // Eksenler
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, canvas.height - padding);
+      ctx.lineTo(canvas.width - padding, canvas.height - padding);
+      ctx.stroke();
+      
+      // Barlar
+      koyler.forEach((koy, index) => {
+        const x = padding + (index * (canvas.width - 2 * padding) / koyler.length) + 
+                  ((canvas.width - 2 * padding) / koyler.length - barGenislik) / 2;
+        const barYukseklik = (koyVerileri[koy] / maxDeger) * grafik_yukseklik;
+        const y = canvas.height - padding - barYukseklik;
+        
+        // Bar çiz
+        ctx.fillStyle = renkler[index % renkler.length];
+        ctx.fillRect(x, y, barGenislik, barYukseklik);
+        
+        // Kenarlık
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, barGenislik, barYukseklik);
+        
+        // Köy adı
+        ctx.fillStyle = '#666';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(koy, x + barGenislik/2, canvas.height - padding + 20);
+        
+        // Değer
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText(koyVerileri[koy].toFixed(1) + 'L', x + barGenislik/2, y + 20);
+      });
+      
+      // Y ekseni etiketleri
+      ctx.fillStyle = '#666';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'right';
+      for (let i = 0; i <= 5; i++) {
+        const y = canvas.height - padding - (i * grafik_yukseklik / 5);
+        const deger = (maxDeger * i / 5).toFixed(0);
+        ctx.fillText(deger + 'L', padding - 10, y + 4);
+      }
+    }
+    
+    // CSV indirme
+    function csvIndir() {
+      if (filtreliVeriler.length === 0) {
+        alert('İndirilecek veri bulunmamaktadır.');
+        return;
+      }
+      
+      const csvIcerik = [
+        ["Tarih", "Köy", "Müstahsil", "Öğün", "Miktar (L)", "Yağ (%)", "Protein (%)", "Sıcaklık (°C)"],
+        ...filtreliVeriler.map(v => [
+          v.tarih, v.koy, v.musta, v.ogun, 
+          v.miktar, v.yagOrani || 0, v.proteinOrani || 0, v.sicaklik || 0
+        ])
+      ];
+      
+      const csvString = csvIcerik.map(row => row.join(",")).join("\n");
+      const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sut_raporu_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    
+    // Excel indirme
+    function excelIndir() {
+      if (filtreliVeriler.length === 0) {
+        alert('İndirilecek veri bulunmamaktadır.');
+        return;
+      }
+      
+      // Basit Excel formatı (XML tabanlı)
+      let excelContent = `<?xml version="1.0"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" 
+          xmlns:o="urn:schemas-microsoft-com:office:office" 
+          xmlns:x="urn:schemas-microsoft-com:office:excel" 
+          xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" 
+          xmlns:html="http://www.w3.org/TR/REC-html40">
+<Worksheet ss:Name="Süt Raporu">
+<Table>
+<Row>
+  <Cell><Data ss:Type="String">Tarih</Data></Cell>
+  <Cell><Data ss:Type="String">Köy</Data></Cell>
+  <Cell><Data ss:Type="String">Müstahsil</Data></Cell>
+  <Cell><Data ss:Type="String">Öğün</Data></Cell>
+  <Cell><Data ss:Type="String">Miktar (L)</Data></Cell>
+  <Cell><Data ss:Type="String">Yağ (%)</Data></Cell>
+  <Cell><Data ss:Type="String">Protein (%)</Data></Cell>
+  <Cell><Data ss:Type="String">Sıcaklık (°C)</Data></Cell>
+</Row>`;
+      
+      filtreliVeriler.forEach(v => {
+        excelContent += `
+<Row>
+  <Cell><Data ss:Type="String">${v.tarih}</Data></Cell>
+  <Cell><Data ss:Type="String">${v.koy}</Data></Cell>
+  <Cell><Data ss:Type="String">${v.musta}</Data></Cell>
+  <Cell><Data ss:Type="String">${v.ogun}</Data></Cell>
+  <Cell><Data ss:Type="Number">${v.miktar}</Data></Cell>
+  <Cell><Data ss:Type="Number">${v.yagOrani || 0}</Data></Cell>
+  <Cell><Data ss:Type="Number">${v.proteinOrani || 0}</Data></Cell>
+  <Cell><Data ss:Type="Number">${v.sicaklik || 0}</Data></Cell>
+</Row>`;
+      });
+      
+      excelContent += `
+</Table>
+</Worksheet>
+</Workbook>`;
+      
+      const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sut_raporu_${new Date().toISOString().split('T')[0]}.xls`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    
+    // PDF oluşturma
+    function pdfOlustur() {
+      if (filtreliVeriler.length === 0) {
+        alert('PDF oluşturmak için veri bulunmamaktadır.');
+        return;
+      }
+      
+      const tarih = new Date().toLocaleDateString('tr-TR');
+      const baslangic = document.getElementById('baslangic-tarih').value;
+      const bitis = document.getElementById('bitis-tarih').value;
+      
+      let htmlIcerik = `
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Süt Üretimi Raporu</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { color: #4CAF50; text-align: center; margin-bottom: 30px; }
+            .info { margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; }
+            .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+            .stat-box { text-align: center; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+            .stat-number { font-size: 1.5em; font-weight: bold; color: #4CAF50; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #4CAF50; color: white; }
+            tr:nth-child(even) { background-color: #f8f9fa; }
+            .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>🥛 Süt Üretimi Raporu</h1>
+          
+          <div class="info">
+            <p><strong>Rapor Tarihi:</strong> ${tarih}</p>
+            <p><strong>Dönem:</strong> ${baslangic} - ${bitis}</p>
+            <p><strong>Toplam Kayıt:</strong> ${filtreliVeriler.length}</p>
+          </div>
+          
+          <div class="stats">
+            <div class="stat-box">
+              <div class="stat-number">${document.getElementById("toplam-uretim").textContent}</div>
+              <div>Toplam Üretim (L)</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${document.getElementById("gunluk-ortalama").textContent}</div>
+              <div>Günlük Ortalama (L)</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${document.getElementById("aktif-uretici").textContent}</div>
+              <div>Aktif Üretici</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${document.getElementById("ortalama-kalite").textContent}</div>
+              <div>Ortalama Yağ (%)</div>
+            </div>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Tarih</th>
+                <th>Köy</th>
+                <th>Müstahsil</th>
+                <th>Öğün</th>
+                <th>Miktar (L)</th>
+                <th>Yağ (%)</th>
+                <th>Protein (%)</th>
+                <th>Sıcaklık (°C)</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      
+      filtreliVeriler.forEach(v => {
+        htmlIcerik += `
+          <tr>
+            <td>${v.tarih}</td>
+            <td>${v.koy}</td>
+            <td>${v.musta}</td>
+            <td>${v.ogun}</td>
+            <td>${v.miktar.toFixed(1)}</td>
+            <td>${(v.yagOrani || 0).toFixed(1)}</td>
+            <td>${(v.proteinOrani || 0).toFixed(1)}</td>
+            <td>${(v.sicaklik || 0).toFixed(1)}</td>
+          </tr>
+        `;
+      });
+      
+      htmlIcerik += `
+            </tbody>
+          </table>
+          
+          <div class="footer">
+            <p>Bu rapor Süt Takip Sistemi tarafından otomatik olarak oluşturulmuştur.</p>
+            <p>Oluşturulma Zamanı: ${new Date().toLocaleString('tr-TR')}</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      const yeniPencere = window.open('', '_blank');
+      yeniPencere.document.write(htmlIcerik);
+      yeniPencere.document.close();
+      yeniPencere.print();
+    }
+    
+    // Yazdırma
+    function yazdır() {
+      window.print();
+    }
+    
+    // Veri güncelleme kontrolü
+    function veriGuncellemeKontrol() {
+      const yeniVeriler = JSON.parse(localStorage.getItem('sutVerileri') || '[]');
+      if (yeniVeriler.length !== sutVerileri.length) {
+        sutVerileri = yeniVeriler;
+        raporlariFiltrele();
+      }
+    }
+    
+    // 30 saniyede bir veri kontrolü
+    setInterval(veriGuncellemeKontrol, 30000);
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('arama').focus();
+      }
+      if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        yazdır();
+      }
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        csvIndir();
+      }
+    });
+    
+    console.log("📊 Süt Takip Rapor Paneli yüklendi!");
+  </script>
+</body>
+</html>
