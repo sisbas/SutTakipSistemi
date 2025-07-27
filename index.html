@@ -478,9 +478,18 @@
         },
         body: JSON.stringify(veri)
       });
-      
+
       if (!yanit.ok) {
-        throw new Error(`HTTP ${yanit.status}`);
+        let detay = "";
+        try {
+          const errJson = await yanit.json();
+          if (errJson.error && errJson.error.message) {
+            detay = " - " + errJson.error.message;
+          }
+        } catch (e) {
+          // JSON parse hatası varsa detay ekleme
+        }
+        throw new Error(`HTTP ${yanit.status}${detay}`);
       }
     }
     
