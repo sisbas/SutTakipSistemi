@@ -225,25 +225,6 @@
       font-size: 1.1rem;
       color: #666;
     }
-    
-    .summary-card {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-    
-    .trend-indicator {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.9rem;
-      font-weight: bold;
-    }
-    .trend-up { background: #d4edda; color: #155724; }
-    .trend-down { background: #f8d7da; color: #721c24; }
-    .trend-stable { background: #fff3cd; color: #856404; }
   </style>
 </head>
 <body>
@@ -268,8 +249,8 @@
         <div class="stat-label">Aktif Üretici</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number" id="ortalama-kalite">0</div>
-        <div class="stat-label">Ortalama Yağ (%)</div>
+        <div class="stat-number" id="toplam-kayit">0</div>
+        <div class="stat-label">Toplam Kayıt</div>
       </div>
     </div>
     
@@ -280,10 +261,10 @@
           <label for="filtre-koy">Köy:</label>
           <select id="filtre-koy" onchange="raporlariFiltrele()">
             <option value="">Tümü</option>
-            <option value="Köy 1">Köy 1</option>
-            <option value="Köy 2">Köy 2</option>
-            <option value="Köy 3">Köy 3</option>
-            <option value="Köy 4">Köy 4</option>
+            <option value="Yuvalı">Yuvalı</option>
+            <option value="Karapürçek">Karapürçek</option>
+            <option value="Edirköy">Edirköy</option>
+            <option value="Kavacık">Kavacık</option>
           </select>
         </div>
         
@@ -339,15 +320,12 @@
               <th onclick="tabloSirala('musta')">Müstahsil ↕️</th>
               <th onclick="tabloSirala('ogun')">Öğün ↕️</th>
               <th onclick="tabloSirala('miktar')">Miktar (L) ↕️</th>
-              <th onclick="tabloSirala('yagOrani')">Yağ (%) ↕️</th>
-              <th onclick="tabloSirala('proteinOrani')">Protein (%) ↕️</th>
-              <th onclick="tabloSirala('sicaklik')">Sıcaklık (°C) ↕️</th>
               <th>İşlemler</th>
             </tr>
           </thead>
           <tbody id="tabloIcerik">
             <tr>
-              <td colspan="9" class="loading">Veriler yükleniyor...</td>
+              <td colspan="6" class="loading">Veriler yükleniyor...</td>
             </tr>
           </tbody>
         </table>
@@ -376,10 +354,10 @@
     let siralamaDurumu = { alan: '', yön: 'asc' };
     
     const MUSTAHSIL_LISTESI = {
-      "Köy 1": ["Ayhan","Süleyman","Engin","Selahattin","Nevzat","Gökmen","A. Gökdağ","Hüsnü","İsmail","Emine","Berrin","Bayramalı","Kemal","Şükriye Can","İ. Duraklı","M. Bayraktar","Mithat","Necati","A. Yalçın","Bilgin","Necami","H. Büyer","A. Yüksel","Ergin"],
-      "Köy 2": ["Ahmet","Emrah","Ümit","Ender","Mehmet","Okan","Hakan","Cemalettin","Hulisi","Fikret"],
-      "Köy 3": ["H. Boz","Nadir","Nejat","A. Durmuş","Ö. Durmuş","Harun","Rüstem","Üsret","Sevim","Güray","A. Kahveci","A. Çetin","Nazlı","Rasit","Zerrin"],
-      "Köy 4": ["C. Kaçan","İt. Kontor","Mükrinat","M. Yıldız","M. Şahin","Zeki","Vasif","S. Ayalın","Sevgi","A. Aydın","M. Aydın"]
+      "Yuvalı": ["Ayhan","Süleyman","Engin","Selahattin","Nevzat","Gökmen","A. Gökdağ","Hüsnü","İsmail","Emine","Berrin","Bayramalı","Kemal","Şükriye Can","İ. Duraklı","M. Bayraktar","Mithat","Necati","A. Yalçın","Bilgin","Necami","H. Büyer","A. Yüksel","Ergin"],
+      "Karapürçek": ["Ahmet","Emrah","Ümit","Ender","Mehmet","Okan","Hakan","Cemalettin","Hulisi","Fikret"],
+      "Edirköy": ["H. Boz","Nadir","Nejat","A. Durmuş","Ö. Durmuş","Harun","Rüstem","Üsret","Sevim","Güray","A. Kahveci","A. Çetin","Nazlı","Rasit","Zerrin"],
+      "Kavacık": ["C. Kaçan","İt. Kontor","Mükrinat","M. Yıldız","M. Şahin","Zeki","Vasif","S. Ayalın","Sevgi","A. Aydın","M. Aydın"]
     };
     
     // Sayfa yüklendiğinde
@@ -428,14 +406,11 @@
       const gunSayisi = new Set(filtreliVeriler.map(v => v.tarih)).size || 1;
       const gunlukOrtalama = toplamUretim / gunSayisi;
       const aktifUretici = new Set(filtreliVeriler.map(v => v.musta)).size;
-      const ortalamaKalite = filtreliVeriler.length > 0 
-        ? filtreliVeriler.reduce((sum, v) => sum + (v.yagOrani || 0), 0) / filtreliVeriler.length
-        : 0;
       
       document.getElementById('toplam-uretim').textContent = toplamUretim.toFixed(1);
       document.getElementById('gunluk-ortalama').textContent = gunlukOrtalama.toFixed(1);
       document.getElementById('aktif-uretici').textContent = aktifUretici;
-      document.getElementById('ortalama-kalite').textContent = ortalamaKalite.toFixed(1);
+      document.getElementById('toplam-kayit').textContent = filtreliVeriler.length;
     }
     
     // Raporları filtrele
@@ -500,9 +475,6 @@
           <td>${veri.musta}</td>
           <td>${veri.ogun === 'Sabah' ? '🌅' : '🌆'} ${veri.ogun}</td>
           <td><strong>${veri.miktar.toFixed(1)}</strong></td>
-          <td>${(veri.yagOrani || 0).toFixed(1)}</td>
-          <td>${(veri.proteinOrani || 0).toFixed(1)}</td>
-          <td>${(veri.sicaklik || 0).toFixed(1)}</td>
           <td>
             <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" 
                     onclick="kayitSil(${veri.id})">🗑️</button>
@@ -753,10 +725,9 @@
       }
       
       const csvIcerik = [
-        ["Tarih", "Köy", "Müstahsil", "Öğün", "Miktar (L)", "Yağ (%)", "Protein (%)", "Sıcaklık (°C)"],
+        ["Tarih", "Köy", "Müstahsil", "Öğün", "Miktar (L)"],
         ...filtreliVeriler.map(v => [
-          v.tarih, v.koy, v.musta, v.ogun, 
-          v.miktar, v.yagOrani || 0, v.proteinOrani || 0, v.sicaklik || 0
+          v.tarih, v.koy, v.musta, v.ogun, v.miktar
         ])
       ];
       
@@ -793,9 +764,6 @@
   <Cell><Data ss:Type="String">Müstahsil</Data></Cell>
   <Cell><Data ss:Type="String">Öğün</Data></Cell>
   <Cell><Data ss:Type="String">Miktar (L)</Data></Cell>
-  <Cell><Data ss:Type="String">Yağ (%)</Data></Cell>
-  <Cell><Data ss:Type="String">Protein (%)</Data></Cell>
-  <Cell><Data ss:Type="String">Sıcaklık (°C)</Data></Cell>
 </Row>`;
       
       filtreliVeriler.forEach(v => {
@@ -806,9 +774,6 @@
   <Cell><Data ss:Type="String">${v.musta}</Data></Cell>
   <Cell><Data ss:Type="String">${v.ogun}</Data></Cell>
   <Cell><Data ss:Type="Number">${v.miktar}</Data></Cell>
-  <Cell><Data ss:Type="Number">${v.yagOrani || 0}</Data></Cell>
-  <Cell><Data ss:Type="Number">${v.proteinOrani || 0}</Data></Cell>
-  <Cell><Data ss:Type="Number">${v.sicaklik || 0}</Data></Cell>
 </Row>`;
       });
       
@@ -855,10 +820,6 @@
             th { background-color: #4CAF50; color: white; }
             tr:nth-child(even) { background-color: #f8f9fa; }
             .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
-            @media print {
-              body { margin: 0; }
-              .no-print { display: none; }
-            }
           </style>
         </head>
         <body>
@@ -884,8 +845,8 @@
               <div>Aktif Üretici</div>
             </div>
             <div class="stat-box">
-              <div class="stat-number">${document.getElementById("ortalama-kalite").textContent}</div>
-              <div>Ortalama Yağ (%)</div>
+              <div class="stat-number">${document.getElementById("toplam-kayit").textContent}</div>
+              <div>Toplam Kayıt</div>
             </div>
           </div>
           
@@ -897,9 +858,6 @@
                 <th>Müstahsil</th>
                 <th>Öğün</th>
                 <th>Miktar (L)</th>
-                <th>Yağ (%)</th>
-                <th>Protein (%)</th>
-                <th>Sıcaklık (°C)</th>
               </tr>
             </thead>
             <tbody>
@@ -913,9 +871,6 @@
             <td>${v.musta}</td>
             <td>${v.ogun}</td>
             <td>${v.miktar.toFixed(1)}</td>
-            <td>${(v.yagOrani || 0).toFixed(1)}</td>
-            <td>${(v.proteinOrani || 0).toFixed(1)}</td>
-            <td>${(v.sicaklik || 0).toFixed(1)}</td>
           </tr>
         `;
       });
@@ -971,7 +926,7 @@
       }
     });
     
-    console.log("📊 Süt Takip Rapor Paneli yüklendi!");
+    console.log("📊 Süt Takip Rapor Paneli v2.1 yüklendi!");
   </script>
 </body>
 </html>
