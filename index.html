@@ -308,8 +308,8 @@
       
       <div class="email-status">
         <h3>📧 E-posta Rapor Sistemi</h3>
-        <p><strong>Gönderim Adresi:</strong> sisbas@yahoo.com</p>
-        <p><strong>Gönderim Sıklığı:</strong> Her 15 günde bir</p>
+        <p><strong>Gönderim Adresi:</strong> <span id="email-alici"></span></p>
+        <p><strong>Gönderim Sıklığı:</strong> Her ayın 1'i ve 16'sı</p>
         <p><strong>Son Gönderim:</strong> <span id="son-email-tarihi">-</span></p>
         <p><strong>Sonraki Gönderim:</strong> <span id="sonraki-email-tarihi">-</span></p>
         <button class="btn btn-secondary" onclick="testEmailGonder()">📧 Test E-posta Gönder</button>
@@ -342,6 +342,7 @@
       EMAIL_SERVICE_ID: "service_sut_takip", // EmailJS Service ID
       EMAIL_TEMPLATE_ID: "template_15gun_rapor", // EmailJS Template ID
       EMAIL_USER_ID: "your_emailjs_user_id", // EmailJS User ID
+      EMAIL_RECIPIENT: "saraysut-59@hotmail.com.tr", // Rapor gönderim adresi
       TABLO_YAPISI: {
         "Yuvalı": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
         "Karapürçek": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo2" },
@@ -367,6 +368,7 @@
       document.getElementById('tarih').value = new Date().toISOString().split('T')[0];
       istatistikleriGuncelle();
       sistemDurumunuGuncelle();
+      document.getElementById('email-alici').textContent = CONFIG.EMAIL_RECIPIENT;
       emailDurumunuGuncelle();
       networkStatusUpdate();
       emailGonderimKontrol();
@@ -544,51 +546,65 @@
     
     // E-posta durumunu güncelle
     function emailDurumunuGuncelle() {
-      const sonGonderim = emailSettings.sonGonderim 
+      const sonGonderim = emailSettings.sonGonderim
         ? new Date(emailSettings.sonGonderim).toLocaleDateString('tr-TR')
         : "-";
-      
-      const sonrakiGonderim = emailSettings.sonrakiGonderim
-        ? new Date(emailSettings.sonrakiGonderim).toLocaleDateString('tr-TR')
-        : hesaplaSonrakiEmailTarih();
-      
+
+      const sonrakiGonderimTarih = emailSettings.sonrakiGonderim
+        ? new Date(emailSettings.sonrakiGonderim)
+        : hesaplaSonrakiEmailTarih(emailSettings.sonGonderim ? new Date(emailSettings.sonGonderim) : new Date());
+
       document.getElementById("son-email-tarihi").textContent = sonGonderim;
-      document.getElementById("sonraki-email-tarihi").textContent = sonrakiGonderim;
+      document.getElementById("sonraki-email-tarihi").textContent = sonrakiGonderimTarih.toLocaleDateString('tr-TR');
     }
-    
-    // Sonraki e-posta tarihini hesapla
-    function hesaplaSonrakiEmailTarih() {
-      const bugun = new Date();
-      const sonrakiTarih = new Date(bugun.getTime() + (15 * 24 * 60 * 60 * 1000));
-      return sonrakiTarih.toLocaleDateString('tr-TR');
+
+    // Sonraki e-posta tarihini hesapla (1 ve 16'sı)
+    function hesaplaSonrakiEmailTarih(refDate = new Date()) {
+      const tarih = new Date(refDate);
+      let sonraki;
+      if (tarih.getDate() < 16) {
+        sonraki = new Date(tarih.getFullYear(), tarih.getMonth(), 16);
+      } else {
+        sonraki = new Date(tarih.getFullYear(), tarih.getMonth() + 1, 1);
+      }
+      return sonraki;
     }
-    
+
     // E-posta gönderim kontrolü
     function emailGonderimKontrol() {
       const bugun = new Date();
-      const sonGonderim = emailSettings.sonGonderim ? new Date(emailSettings.sonGonderim) : null;
-      
-      // İlk kurulum veya 15 gün geçmişse e-posta gönder
-      if (!sonGonderim || (bugun - sonGonderim) >= (15 * 24 * 60 * 60 * 1000)) {
+      const gun = bugun.getDate();
+
+      if (!emailSettings.sonGonderim) {
+        if (gun === 1 || gun === 16) {
+          otomatikEmailGonder();
+        }
+        return;
+      }
+
+      const sonrakiTarih = emailSettings.sonrakiGonderim
+        ? new Date(emailSettings.sonrakiGonderim)
+        : hesaplaSonrakiEmailTarih(new Date(emailSettings.sonGonderim));
+
+      if (bugun >= sonrakiTarih) {
         otomatikEmailGonder();
       }
     }
-    
+
     // Otomatik e-posta gönderimi
     async function otomatikEmailGonder() {
       try {
         const rapor = onBesGunlukRaporOlustur();
         await emailGonder(rapor, false);
-        
-        // E-posta gönderim tarihlerini güncelle
+
         const bugun = new Date();
         emailSettings.sonGonderim = bugun.toISOString();
-        emailSettings.sonrakiGonderim = new Date(bugun.getTime() + (15 * 24 * 60 * 60 * 1000)).toISOString();
+        emailSettings.sonrakiGonderim = hesaplaSonrakiEmailTarih(bugun).toISOString();
         localStorage.setItem('emailSettings', JSON.stringify(emailSettings));
-        
+
         emailDurumunuGuncelle();
         console.log("✅ 15 günlük rapor otomatik olarak gönderildi");
-        
+
       } catch (error) {
         console.error("❌ Otomatik e-posta gönderim hatası:", error);
       }
@@ -700,7 +716,7 @@ Sistem: https://your-domain.netlify.app
         template_id: CONFIG.EMAIL_TEMPLATE_ID,
         user_id: CONFIG.EMAIL_USER_ID,
         template_params: {
-          to_email: "sisbas@yahoo.com",
+          to_email: CONFIG.EMAIL_RECIPIENT,
           from_name: "Süt Takip Sistemi",
           subject: testModu ? "TEST - 15 Günlük Süt Üretimi Raporu" : "15 Günlük Süt Üretimi Raporu",
           message: raporIcerik,
