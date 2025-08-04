@@ -523,17 +523,20 @@
           }
         });
       }
-      
-      tbody.innerHTML = filtreliVeriler.map(veri => `
+
+      const sonTarih = filtreliVeriler.reduce((max, v) => v.tarih > max ? v.tarih : max, filtreliVeriler[0].tarih);
+      const tabloVerileri = filtreliVeriler.filter(v => v.tarih === sonTarih);
+
+      tbody.innerHTML = tabloVerileri.map(veri => `
         <tr>
           <td>${veri.tarih}</td>
           <td>${veri.koy}</td>
           <td>${veri.musta}</td>
           <td>${veri.ogun === 'Sabah' ? '🌅' : '🌆'} ${veri.ogun}</td>
-          <td><strong>${veri.miktar.toFixed(1)}</strong></td>
+          <td contenteditable="true" onblur="miktarDuzenle('${veri.id}', this)">${veri.miktar.toFixed(1)}</td>
           <td>
-            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" 
-                    onclick="kayitSil(${veri.id})">🗑️</button>
+            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;"
+                    onclick="kayitSil('${veri.id}')">🗑️</button>
           </td>
         </tr>
       `).join('');
@@ -560,6 +563,43 @@
         const metin = satir.textContent.toLowerCase();
         satir.style.display = metin.includes(arama) ? '' : 'none';
       });
+    }
+
+    // Miktar düzenleme
+    async function miktarDuzenle(id, hucre) {
+      const yeniMiktar = parseFloat(hucre.textContent);
+      const mevcut = sutVerileri.find(v => v.id === id);
+      if (!mevcut) return;
+      if (isNaN(yeniMiktar)) {
+        alert('Lütfen geçerli bir sayı girin.');
+        hucre.textContent = mevcut.miktar.toFixed(1);
+        return;
+      }
+
+      mevcut.miktar = yeniMiktar;
+      const fv = filtreliVeriler.find(v => v.id === id);
+      if (fv) fv.miktar = yeniMiktar;
+      hucre.textContent = yeniMiktar.toFixed(1);
+      localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
+      istatistikleriHesapla();
+      grafikleriCiz();
+
+      const recId = id.split('-')[0];
+      const ogunAlan = id.endsWith('-S') ? 'Sabah Süt (L)' : 'Akşam Süt (L)';
+      const { baseId, tablo } = CONFIG.TABLO_YAPISI[mevcut.koy] || {};
+      if (!baseId || !tablo) return;
+      try {
+        await fetch(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tablo)}/${recId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': 'Bearer ' + CONFIG.TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ fields: { [ogunAlan]: yeniMiktar } })
+        });
+      } catch (e) {
+        console.error('Airtable güncelleme hatası', e);
+      }
     }
     
     // Kayıt silme
