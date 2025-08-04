@@ -349,10 +349,20 @@
   
   <script>
     // Global değişkenler
-    let sutVerileri = JSON.parse(localStorage.getItem('sutVerileri') || '[]');
-    let filtreliVeriler = [...sutVerileri];
+    let sutVerileri = [];
+    let filtreliVeriler = [];
     let siralamaDurumu = { alan: '', yön: 'asc' };
-    
+
+    const CONFIG = {
+      TOKEN: "patdVebxph6wUC9cY.44985211c25b8626cd608646e1743983af02c953253bdc4de61297a8ba174f63",
+      TABLO_YAPISI: {
+        "Yuvalı": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
+        "Karapürçek": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo2" },
+        "Edirköy": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo3" },
+        "Kavacık": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo4" }
+      }
+    };
+
     const MUSTAHSIL_LISTESI = {
       "Yuvalı": ["Ayhan","Süleyman","Engin","Selahattin","Nevzat","Gökmen","A. Gökdağ","Hüsnü","İsmail","Emine","Berrin","Bayramalı","Kemal","Şükriye Can","İ. Duraklı","M. Bayraktar","Mithat","Necati","A. Yalçın","Bilgin","Necami","H. Büyer","A. Yüksel","Ergin"],
       "Karapürçek": ["Ahmet","Emrah","Ümit","Ender","Mehmet","Okan","Hakan","Cemalettin","Hulisi","Fikret"],
@@ -364,15 +374,61 @@
     document.addEventListener('DOMContentLoaded', function() {
       mustahsilListesiniDoldur();
       tarihFiltreleriniAyarla();
-      istatistikleriHesapla();
-      raporlariFiltrele();
-      grafikleriCiz();
-      
+      airtableVerileriniYukle();
+
       // Service Worker kayıt
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js');
       }
     });
+
+    async function airtableVerileriniYukle() {
+      try {
+        const tumVeriler = [];
+        for (const [koy, { baseId, tablo }] of Object.entries(CONFIG.TABLO_YAPISI)) {
+          let offset = "";
+          do {
+            const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tablo)}?pageSize=100${offset ? `&offset=${offset}` : ""}`;
+            const yanit = await fetch(url, {
+              headers: { "Authorization": "Bearer " + CONFIG.TOKEN }
+            });
+            const data = await yanit.json();
+            data.records.forEach(rec => {
+              const f = rec.fields;
+              if (f["Sabah Süt (L)"] > 0) {
+                tumVeriler.push({
+                  id: rec.id + "-S",
+                  koy: f["Köy"] || koy,
+                  musta: f["Müstahsil Adı"] || "",
+                  tarih: f["Tarih"],
+                  ogun: "Sabah",
+                  miktar: Number(f["Sabah Süt (L)"])
+                });
+              }
+              if (f["Akşam Süt (L)"] > 0) {
+                tumVeriler.push({
+                  id: rec.id + "-A",
+                  koy: f["Köy"] || koy,
+                  musta: f["Müstahsil Adı"] || "",
+                  tarih: f["Tarih"],
+                  ogun: "Akşam",
+                  miktar: Number(f["Akşam Süt (L)"])
+                });
+              }
+            });
+            offset = data.offset;
+          } while (offset);
+        }
+        sutVerileri = tumVeriler;
+        filtreliVeriler = [...sutVerileri];
+        localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
+        istatistikleriHesapla();
+        raporlariFiltrele();
+        grafikleriCiz();
+      } catch (e) {
+        console.error('Airtable verileri alınamadı', e);
+      }
+    }
     
     // Müstahsil listesini doldur
     function mustahsilListesiniDoldur() {
@@ -900,11 +956,7 @@
     
     // Veri güncelleme kontrolü
     function veriGuncellemeKontrol() {
-      const yeniVeriler = JSON.parse(localStorage.getItem('sutVerileri') || '[]');
-      if (yeniVeriler.length !== sutVerileri.length) {
-        sutVerileri = yeniVeriler;
-        raporlariFiltrele();
-      }
+      airtableVerileriniYukle();
     }
     
     // 30 saniyede bir veri kontrolü
