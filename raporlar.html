@@ -349,10 +349,20 @@
   
   <script>
     // Global değişkenler
-    let sutVerileri = JSON.parse(localStorage.getItem('sutVerileri') || '[]');
-    let filtreliVeriler = [...sutVerileri];
+    let sutVerileri = [];
+    let filtreliVeriler = [];
     let siralamaDurumu = { alan: '', yön: 'asc' };
-    
+
+    const CONFIG = {
+      TOKEN: "patdVebxph6wUC9cY.44985211c25b8626cd608646e1743983af02c953253bdc4de61297a8ba174f63",
+      TABLO_YAPISI: {
+        "Yuvalı": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
+        "Karapürçek": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo2" },
+        "Edirköy": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo3" },
+        "Kavacık": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo4" }
+      }
+    };
+
     const MUSTAHSIL_LISTESI = {
       "Yuvalı": ["Ayhan","Süleyman","Engin","Selahattin","Nevzat","Gökmen","A. Gökdağ","Hüsnü","İsmail","Emine","Berrin","Bayramalı","Kemal","Şükriye Can","İ. Duraklı","M. Bayraktar","Mithat","Necati","A. Yalçın","Bilgin","Necami","H. Büyer","A. Yüksel","Ergin"],
       "Karapürçek": ["Ahmet","Emrah","Ümit","Ender","Mehmet","Okan","Hakan","Cemalettin","Hulisi","Fikret"],
@@ -364,15 +374,61 @@
     document.addEventListener('DOMContentLoaded', function() {
       mustahsilListesiniDoldur();
       tarihFiltreleriniAyarla();
-      istatistikleriHesapla();
-      raporlariFiltrele();
-      grafikleriCiz();
-      
+      airtableVerileriniYukle();
+
       // Service Worker kayıt
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js');
       }
     });
+
+    async function airtableVerileriniYukle() {
+      try {
+        const tumVeriler = [];
+        for (const [koy, { baseId, tablo }] of Object.entries(CONFIG.TABLO_YAPISI)) {
+          let offset = "";
+          do {
+            const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tablo)}?pageSize=100${offset ? `&offset=${offset}` : ""}`;
+            const yanit = await fetch(url, {
+              headers: { "Authorization": "Bearer " + CONFIG.TOKEN }
+            });
+            const data = await yanit.json();
+            data.records.forEach(rec => {
+              const f = rec.fields;
+              if (f["Sabah Süt (L)"] > 0) {
+                tumVeriler.push({
+                  id: rec.id + "-S",
+                  koy: f["Köy"] || koy,
+                  musta: f["Müstahsil Adı"] || "",
+                  tarih: f["Tarih"],
+                  ogun: "Sabah",
+                  miktar: Number(f["Sabah Süt (L)"])
+                });
+              }
+              if (f["Akşam Süt (L)"] > 0) {
+                tumVeriler.push({
+                  id: rec.id + "-A",
+                  koy: f["Köy"] || koy,
+                  musta: f["Müstahsil Adı"] || "",
+                  tarih: f["Tarih"],
+                  ogun: "Akşam",
+                  miktar: Number(f["Akşam Süt (L)"])
+                });
+              }
+            });
+            offset = data.offset;
+          } while (offset);
+        }
+        sutVerileri = tumVeriler;
+        filtreliVeriler = [...sutVerileri];
+        localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
+        istatistikleriHesapla();
+        raporlariFiltrele();
+        grafikleriCiz();
+      } catch (e) {
+        console.error('Airtable verileri alınamadı', e);
+      }
+    }
     
     // Müstahsil listesini doldur
     function mustahsilListesiniDoldur() {
@@ -467,17 +523,20 @@
           }
         });
       }
-      
-      tbody.innerHTML = filtreliVeriler.map(veri => `
+
+      const sonTarih = filtreliVeriler.reduce((max, v) => v.tarih > max ? v.tarih : max, filtreliVeriler[0].tarih);
+      const tabloVerileri = filtreliVeriler.filter(v => v.tarih === sonTarih);
+
+      tbody.innerHTML = tabloVerileri.map(veri => `
         <tr>
           <td>${veri.tarih}</td>
           <td>${veri.koy}</td>
           <td>${veri.musta}</td>
           <td>${veri.ogun === 'Sabah' ? '🌅' : '🌆'} ${veri.ogun}</td>
-          <td><strong>${veri.miktar.toFixed(1)}</strong></td>
+          <td contenteditable="true" onblur="miktarDuzenle('${veri.id}', this)">${veri.miktar.toFixed(1)}</td>
           <td>
-            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" 
-                    onclick="kayitSil(${veri.id})">🗑️</button>
+            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;"
+                    onclick="kayitSil('${veri.id}')">🗑️</button>
           </td>
         </tr>
       `).join('');
@@ -504,6 +563,43 @@
         const metin = satir.textContent.toLowerCase();
         satir.style.display = metin.includes(arama) ? '' : 'none';
       });
+    }
+
+    // Miktar düzenleme
+    async function miktarDuzenle(id, hucre) {
+      const yeniMiktar = parseFloat(hucre.textContent);
+      const mevcut = sutVerileri.find(v => v.id === id);
+      if (!mevcut) return;
+      if (isNaN(yeniMiktar)) {
+        alert('Lütfen geçerli bir sayı girin.');
+        hucre.textContent = mevcut.miktar.toFixed(1);
+        return;
+      }
+
+      mevcut.miktar = yeniMiktar;
+      const fv = filtreliVeriler.find(v => v.id === id);
+      if (fv) fv.miktar = yeniMiktar;
+      hucre.textContent = yeniMiktar.toFixed(1);
+      localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
+      istatistikleriHesapla();
+      grafikleriCiz();
+
+      const recId = id.split('-')[0];
+      const ogunAlan = id.endsWith('-S') ? 'Sabah Süt (L)' : 'Akşam Süt (L)';
+      const { baseId, tablo } = CONFIG.TABLO_YAPISI[mevcut.koy] || {};
+      if (!baseId || !tablo) return;
+      try {
+        await fetch(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tablo)}/${recId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': 'Bearer ' + CONFIG.TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ fields: { [ogunAlan]: yeniMiktar } })
+        });
+      } catch (e) {
+        console.error('Airtable güncelleme hatası', e);
+      }
     }
     
     // Kayıt silme
@@ -900,11 +996,7 @@
     
     // Veri güncelleme kontrolü
     function veriGuncellemeKontrol() {
-      const yeniVeriler = JSON.parse(localStorage.getItem('sutVerileri') || '[]');
-      if (yeniVeriler.length !== sutVerileri.length) {
-        sutVerileri = yeniVeriler;
-        raporlariFiltrele();
-      }
+      airtableVerileriniYukle();
     }
     
     // 30 saniyede bir veri kontrolü
