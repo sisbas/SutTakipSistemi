@@ -77,7 +77,8 @@
       color: #333;
     }
     .form-group select,
-    .form-group input {
+    .form-group input,
+    .form-group textarea {
       padding: 12px;
       border: 2px solid #e1e5e9;
       border-radius: 8px;
@@ -85,7 +86,8 @@
       transition: border-color 0.3s;
     }
     .form-group select:focus,
-    .form-group input:focus {
+    .form-group input:focus,
+    .form-group textarea:focus {
       outline: none;
       border-color: #4CAF50;
     }
@@ -191,6 +193,7 @@
       .container { margin: 10px; border-radius: 10px; }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 </head>
 <body>
   <div class="online-status" id="networkStatus">
@@ -207,6 +210,7 @@
       <button class="nav-tab active" onclick="switchTab('veri-girisi')">📝 Veri Girişi</button>
       <button class="nav-tab" onclick="window.location.href='/raporlar'">📊 Raporlar</button>
       <button class="nav-tab" onclick="switchTab('analiz')">📈 Analiz</button>
+      <button class="nav-tab" onclick="switchTab('foto-liste')">📷 Foto Liste</button>
       <button class="nav-tab" onclick="switchTab('ayarlar')">⚙️ Ayarlar</button>
     </div>
     
@@ -289,7 +293,31 @@
         <button class="btn" onclick="window.location.href='/raporlar'">📊 Detaylı Raporlar</button>
       </div>
     </div>
-    
+
+    <!-- FOTO LİSTE TAB -->
+    <div id="foto-liste" class="tab-content">
+      <h2>Fotoğraftan Liste Yükle</h2>
+      <div class="form-section">
+        <div class="form-group">
+          <label for="ocrInput">Liste Fotoğrafı</label>
+          <input type="file" id="ocrInput" accept="image/*">
+        </div>
+        <div class="form-group" style="grid-column: span 2;">
+          <label for="ocrText">OCR Metni / JSON</label>
+          <textarea id="ocrText" rows="6"></textarea>
+        </div>
+      </div>
+      <div style="text-align: center;">
+        <button class="btn" onclick="parseJsonAndPreview()">Önizle</button>
+      </div>
+      <div id="ocrPreview" style="overflow-x:auto; margin-top:20px;"></div>
+      <div id="ocrConfirm" style="display:none; text-align:center; margin-top:20px;">
+        <p>Verileri onaylıyor musunuz?</p>
+        <button class="btn" onclick="kaydetOcrVeri()">Onayla</button>
+        <button class="btn btn-secondary" onclick="iptalOcr()">Düzelt</button>
+      </div>
+    </div>
+
     <!-- AYARLAR TAB -->
     <div id="ayarlar" class="tab-content">
       <h2>Sistem Ayarları</h2>
@@ -359,7 +387,10 @@
     
     // Veri depolama
     let sutVerileri = JSON.parse(localStorage.getItem('sutVerileri') || '[]');
-    
+
+    // OCR geçici veri
+    let ocrTempData = [];
+
     // E-posta sistemi için tarih takibi
     let emailSettings = JSON.parse(localStorage.getItem('emailSettings') || '{"sonGonderim": null, "sonrakiGonderim": null}');
     
@@ -382,6 +413,11 @@
       
       // 15 günlük e-posta kontrolü için timer
       setInterval(emailGonderimKontrol, 60000 * 60); // Her saat kontrol et
+
+      const ocrInput = document.getElementById('ocrInput');
+      if (ocrInput) {
+        ocrInput.addEventListener('change', secOcrDosya);
+      }
     });
     
     // Tab değiştirme
@@ -407,6 +443,65 @@
           mustaSelect.appendChild(opt);
         });
       }
+    }
+
+    // OCR tabı işlemleri
+    async function secOcrDosya() {
+      const file = document.getElementById('ocrInput').files[0];
+      if (file) {
+        const { data: { text } } = await Tesseract.recognize(file, 'tur');
+        document.getElementById('ocrText').value = text.trim();
+      }
+    }
+
+    function parseJsonAndPreview() {
+      const txt = document.getElementById('ocrText').value;
+      let data;
+      try {
+        data = JSON.parse(txt);
+      } catch (e) {
+        gosterMesaj('JSON formatı hatalı.', 'error');
+        return;
+      }
+      if (!Array.isArray(data)) {
+        gosterMesaj('JSON bir dizi olmalı.', 'error');
+        return;
+      }
+      ocrTempData = data;
+      const rows = data.map(d => `<tr><td>${d.koy||''}</td><td>${d.musta||''}</td><td>${d.tarih||''}</td><td>${d.ogun||''}</td><td>${d.miktar||''}</td></tr>`).join('');
+      document.getElementById('ocrPreview').innerHTML = `<table style="width:100%; border-collapse: collapse;"><tr><th>Köy</th><th>Müstahsil</th><th>Tarih</th><th>Öğün</th><th>Miktar</th></tr>${rows}</table>`;
+      document.getElementById('ocrConfirm').style.display = 'block';
+    }
+
+    function iptalOcr() {
+      document.getElementById('ocrConfirm').style.display = 'none';
+    }
+
+    function kaydetOcrVeri() {
+      if (!Array.isArray(ocrTempData)) {
+        gosterMesaj('Yüklenecek veri yok.', 'error');
+        return;
+      }
+      let sayac = 0;
+      ocrTempData.forEach(item => {
+        if (item.koy && item.musta && item.tarih && item.ogun && item.miktar) {
+          const mevcut = sutVerileri.find(v => v.koy === item.koy && v.musta === item.musta && v.tarih === item.tarih && v.ogun === item.ogun);
+          if (mevcut) {
+            mevcut.miktar = item.miktar;
+          } else {
+            sutVerileri.push({ id: Date.now() + Math.random(), ...item, kayitTarihi: new Date().toISOString() });
+          }
+          sayac++;
+        }
+      });
+      localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
+      gosterMesaj(`${sayac} kayıt yüklendi.`, 'success');
+      document.getElementById('ocrConfirm').style.display = 'none';
+      document.getElementById('ocrPreview').innerHTML = '';
+      document.getElementById('ocrText').value = '';
+      document.getElementById('ocrInput').value = '';
+      istatistikleriGuncelle();
+      sistemDurumunuGuncelle();
     }
     
     // Veri kaydetme
