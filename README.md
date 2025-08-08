@@ -10,6 +10,7 @@ Modern süt üretimi takip ve raporlama sistemi. PWA (Progressive Web App) tekno
 - Sabah/Akşam öğün ayrımı
 - Yağ oranı, protein oranı, sıcaklık takibi
 - Tarih bazlı filtreleme
+- Fotoğraflardan liste verisi alma (OCR) ve JSON formatında kaydetme
 
 ### 📈 Raporlama & Analiz
 - Günlük, haftalık, aylık istatistikler

@@ -253,12 +253,15 @@
           <input type="number" id="miktar" step="0.1" min="0" placeholder="0.0">
         </div>
       </div>
-      
+
       <div style="text-align: center;">
         <button class="btn" onclick="kaydetVeri()">💾 Kaydet</button>
         <button class="btn btn-secondary" onclick="temizleForm()">🧹 Temizle</button>
+        <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display:none" onchange="fotoYukle(event)">
+        <button class="btn btn-secondary" onclick="document.getElementById('fotoInput').click()">📷 Fotoğraftan Liste Yükle</button>
       </div>
-      
+
+      <div id="fotoSonuc" style="margin-top:20px;"></div>
       <div id="durum"></div>
     </div>
     
@@ -333,7 +336,8 @@
   <button id="installButton" class="btn install-btn">
     📱 Uygulamayı Yükle
   </button>
-  
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.2/dist/tesseract.min.js"></script>
   <script>
     // Sabitler ve yapılandırma
     const CONFIG = {
@@ -359,7 +363,8 @@
     
     // Veri depolama
     let sutVerileri = JSON.parse(localStorage.getItem('sutVerileri') || '[]');
-    
+    let ocrVerileri = [];
+
     // E-posta sistemi için tarih takibi
     let emailSettings = JSON.parse(localStorage.getItem('emailSettings') || '{"sonGonderim": null, "sonrakiGonderim": null}');
     
@@ -757,13 +762,104 @@ Sistem: https://your-domain.netlify.app
       const veriString = JSON.stringify(sutVerileri, null, 2);
       const blob = new Blob([veriString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      
+
       const a = document.createElement('a');
       a.href = url;
       a.download = `sut_verileri_yedek_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
-      
+
       gosterMesaj("Veriler yedeklendi.", "success");
+    }
+
+    // Fotoğraftan liste yükleme
+    async function fotoYukle(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      gosterMesaj("Fotoğraf işleniyor...", "success");
+      try {
+        const { data: { text } } = await Tesseract.recognize(file, 'tur');
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+        const parsed = [];
+        lines.forEach(line => {
+          const parts = line.split(/[\s,]+/);
+          if (parts.length >= 5) {
+            parsed.push({
+              koy: parts[0],
+              musta: parts[1],
+              tarih: parts[2],
+              ogun: parts[3],
+              miktar: parseFloat(parts[4].replace(',', '.'))
+            });
+          }
+        });
+        ocrVerileri = parsed;
+        olusturOnayTablosu(parsed);
+      } catch (err) {
+        gosterMesaj('Fotoğraf okunamadı: ' + err.message, 'error');
+      }
+    }
+
+    function olusturOnayTablosu(kayitlar) {
+      const container = document.getElementById('fotoSonuc');
+      if (!kayitlar.length) {
+        container.innerHTML = '<p>Herhangi bir veri bulunamadı.</p>';
+        return;
+      }
+      let html = '<h3>OCR ile Okunan Liste</h3>';
+      html += '<p>Lütfen verileri kontrol edin, gerekirse düzeltin.</p>';
+      html += '<table border="1" style="width:100%;border-collapse:collapse;"><thead><tr><th>Köy</th><th>Müstahsil</th><th>Tarih</th><th>Öğün</th><th>Miktar</th></tr></thead><tbody>';
+      kayitlar.forEach(k => {
+        const dup = eslesenKayit(k);
+        html += `<tr${dup ? " style='background:#ffebee'" : ''}>`+
+          `<td contenteditable data-field='koy'>${k.koy}</td>`+
+          `<td contenteditable data-field='musta'>${k.musta}</td>`+
+          `<td contenteditable data-field='tarih'>${k.tarih}</td>`+
+          `<td contenteditable data-field='ogun'>${k.ogun}</td>`+
+          `<td contenteditable data-field='miktar'>${k.miktar}</td>`+
+          `</tr>`;
+      });
+      html += '</tbody></table>';
+      html += '<div style="text-align:center; margin-top:10px;">'+
+              '<button class="btn" onclick="fotoVerileriOnayla()">✅ Onayla ve Kaydet</button>'+
+              '<button class="btn btn-secondary" onclick="fotoSonucTemizle()">❌ İptal</button></div>';
+      container.innerHTML = html;
+    }
+
+    function eslesenKayit(kayit) {
+      return sutVerileri.some(v => v.koy === kayit.koy && v.musta === kayit.musta && v.tarih === kayit.tarih && v.ogun === kayit.ogun);
+    }
+
+    function fotoVerileriOnayla() {
+      const rows = Array.from(document.querySelectorAll('#fotoSonuc tbody tr'));
+      const kayitlar = rows.map(row => {
+        const cells = row.querySelectorAll('td');
+        return {
+          koy: cells[0].textContent.trim(),
+          musta: cells[1].textContent.trim(),
+          tarih: cells[2].textContent.trim(),
+          ogun: cells[3].textContent.trim(),
+          miktar: parseFloat(cells[4].textContent.trim())
+        };
+      });
+      kayitlar.forEach(k => {
+        if (!eslesenKayit(k) && k.koy && k.musta && k.tarih && k.ogun && !isNaN(k.miktar)) {
+          const yeni = { id: Date.now() + Math.random(), ...k, kayitTarihi: new Date().toISOString() };
+          sutVerileri.push(yeni);
+          if (navigator.onLine) {
+            airtableKaydet(k).catch(err => console.error('Airtable hata:', err));
+          }
+        }
+      });
+      localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
+      gosterMesaj('Fotoğraftan okunan veriler kaydedildi.', 'success');
+      fotoSonucTemizle();
+      istatistikleriGuncelle();
+      sistemDurumunuGuncelle();
+    }
+
+    function fotoSonucTemizle() {
+      ocrVerileri = [];
+      document.getElementById('fotoSonuc').innerHTML = '';
     }
     
     // Network durumu
