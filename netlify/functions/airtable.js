@@ -1,12 +1,11 @@
-const fetch = require('node-fetch');
 const https = require('https');
 
-const BASE_ID = process.env.AIRTABLE_BASE_ID || 'appngTzrsiNEo3rIN';
+const BASE_ID = process.env.AIRTABLE_BASE_ID;
 const TOKEN = process.env.AIRTABLE_PAT;
 
-exports.handler = async function(event) {
+exports.handler = async function (event) {
   const { httpMethod, queryStringParameters = {} } = event;
-  const { table, recordId, offset, pageSize } = queryStringParameters;
+  const { table, recordId, offset, pageSize, baseId } = queryStringParameters;
 
   if (!TOKEN) {
     return {
@@ -14,12 +13,15 @@ exports.handler = async function(event) {
       body: JSON.stringify({ error: 'AIRTABLE_PAT not configured' })
     };
   }
-const BASE_ID = process.env.AIRTABLE_BASE_ID || 'appngTzrsiNEo3rIN';
 
-exports.handler = async function (event) {
-  const { httpMethod, queryStringParameters = {} } = event;
-  const { table, recordId, offset, pageSize, baseId } = queryStringParameters;
+  const resolvedBaseId = baseId || BASE_ID;
 
+  if (!resolvedBaseId) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'AIRTABLE_BASE_ID not configured' })
+    };
+  }
 
   if (!table) {
     return {
@@ -28,10 +30,7 @@ exports.handler = async function (event) {
     };
   }
 
-  let path = `/v0/${BASE_ID}/${encodeURIComponent(table)}`;
-
-  const resolvedBaseId = baseId || BASE_ID;
-  let url = `https://api.airtable.com/v0/${resolvedBaseId}/${encodeURIComponent(table)}`;
+  let path = `/v0/${resolvedBaseId}/${encodeURIComponent(table)}`;
   if (recordId) {
     path += `/${recordId}`;
   }
@@ -88,3 +87,4 @@ exports.handler = async function (event) {
     req.end();
   });
 };
+
