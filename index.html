@@ -238,19 +238,16 @@
           <input type="date" id="tarih">
         </div>
         
-        <div class="form-group">
-          <label for="ogun">Öğün:</label>
-          <select id="ogun">
-            <option value="Sabah">🌅 Sabah</option>
-            <option value="Akşam">🌆 Akşam</option>
-          </select>
-        </div>
       </div>
-      
+
       <div class="form-section">
         <div class="form-group">
-          <label for="miktar">Süt Miktarı (Litre):</label>
-          <input type="number" id="miktar" step="0.1" min="0" placeholder="0.0">
+          <label for="sabahMiktar">Sabah Süt Miktarı (Litre):</label>
+          <input type="number" id="sabahMiktar" step="0.1" min="0" placeholder="0.0">
+        </div>
+        <div class="form-group">
+          <label for="aksamMiktar">Akşam Süt Miktarı (Litre):</label>
+          <input type="number" id="aksamMiktar" step="0.1" min="0" placeholder="0.0">
         </div>
       </div>
       
@@ -411,43 +408,49 @@
     
     // Veri kaydetme
     async function kaydetVeri() {
-      const formData = {
-        koy: document.getElementById("koy").value,
-        musta: document.getElementById("musta").value,
-        tarih: document.getElementById("tarih").value,
-        ogun: document.getElementById("ogun").value,
-        miktar: parseFloat(document.getElementById("miktar").value)
-      };
-      
+      const koy = document.getElementById("koy").value;
+      const musta = document.getElementById("musta").value;
+      const tarih = document.getElementById("tarih").value;
+      const sabahMiktar = parseFloat(document.getElementById("sabahMiktar").value);
+      const aksamMiktar = parseFloat(document.getElementById("aksamMiktar").value);
+
       // Validasyon
-      if (!formData.koy || !formData.musta || !formData.tarih || !formData.ogun || isNaN(formData.miktar)) {
+      if (!koy || !musta || !tarih || (isNaN(sabahMiktar) && isNaN(aksamMiktar))) {
         gosterMesaj("Lütfen tüm alanları doldurun.", "error");
         return;
       }
-      
-      // Yerel kayıt
-      const yeniKayit = {
-        id: Date.now(),
-        ...formData,
-        kayitTarihi: new Date().toISOString()
-      };
-      
-      sutVerileri.push(yeniKayit);
+
+      const kayitlar = [];
+      if (!isNaN(sabahMiktar)) {
+        kayitlar.push({ koy, musta, tarih, ogun: "Sabah", miktar: sabahMiktar });
+      }
+      if (!isNaN(aksamMiktar)) {
+        kayitlar.push({ koy, musta, tarih, ogun: "Akşam", miktar: aksamMiktar });
+      }
+
+      const baseId = Date.now();
+      const kayitTarihi = new Date().toISOString();
+
+      kayitlar.forEach((formData, idx) => {
+        sutVerileri.push({ id: baseId + idx, ...formData, kayitTarihi });
+      });
       localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
-      
+
       // Airtable'a kaydet
       try {
         if (navigator.onLine) {
-          await airtableKaydet(formData);
+          for (const formData of kayitlar) {
+            await airtableKaydet(formData);
+          }
           gosterMesaj("✅ Kayıt başarıyla tamamlandı!", "success");
         } else {
           gosterMesaj("📱 Offline kaydedildi, çevrimiçi olduğunuzda senkronize edilecek.", "success");
         }
-        
+
         temizleForm();
         istatistikleriGuncelle();
         sistemDurumunuGuncelle();
-        
+
       } catch (err) {
         gosterMesaj("⚠️ Sunucu hatası: " + err.message, "error");
       }
@@ -497,7 +500,8 @@
     
     // Form temizleme
     function temizleForm() {
-      document.getElementById("miktar").value = "";
+      document.getElementById("sabahMiktar").value = "";
+      document.getElementById("aksamMiktar").value = "";
     }
     
     // Mesaj gösterme
