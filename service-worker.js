@@ -13,7 +13,7 @@ const urlsToCache = [
 
 // API endpoint'leri
 const API_ENDPOINTS = [
-  self.location.origin + "/.netlify/functions/airtable"
+  self.location.origin + "/.netlify/functions/supabase"
 ];
 
 // Service Worker kurulumu
@@ -240,7 +240,7 @@ self.addEventListener("sync", event => {
 // Offline verileri senkronize et
 async function syncOfflineData() {
   try {
-    // IndexedDB'den offline verileri al ve Airtable'a gönder
+    // IndexedDB'den offline verileri al ve Supabase'e gönder
     const clients = await self.clients.matchAll();
     clients.forEach(client => {
       client.postMessage({

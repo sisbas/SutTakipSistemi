@@ -29,7 +29,7 @@ Modern süt üretimi takip ve raporlama sistemi. PWA (Progressive Web App) tekno
 ### 🔧 Teknik Özellikler
 - Vanilla JavaScript (framework bağımsız)
 - LocalStorage ile veri persistence
-- Airtable API entegrasyonu
+- Supabase entegrasyonu
 - Modern CSS Grid/Flexbox
 - Dark mode desteği
 
@@ -86,10 +86,10 @@ sut-takip-sistemi/
 
 ## ⚙️ Yapılandırma
 
-### Airtable API Ayarları
-1. Netlify panelinde aşağıdaki ortam değişkenlerini tanımlayın (tanımlanmazsa proje içindeki varsayılanlar kullanılır):
-   - `AIRTABLE_PAT`: Airtable Personal Access Token (varsayılan: `patsJ4tw6oyhjni4x.f54fb49a0f6c7aa312e821b2513bcf238c49136d78de1e597e00c380bed5b207`)
-   - `AIRTABLE_BASE_ID`: Airtable Base ID (varsayılan: `appngTzrsiNEo3rIN`)
+### Supabase API Ayarları
+1. Netlify panelinde aşağıdaki ortam değişkenlerini tanımlayın:
+   - `SUPABASE_URL`: Supabase proje URL'i
+   - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role anahtarı
 
 2. `index.html` ve `raporlar.html` dosyalarında yalnızca tablo adlarını tanımlayın:
 ```javascript
@@ -104,11 +104,11 @@ TABLO_YAPISI: {
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -d '{"records":[{"fields":{"Ad":"Örnek"}}]}' \
-  /.netlify/functions/airtable?table=your_table_name
+  -d '{"records":[{"fields":{"musta":"Örnek"}}]}' \
+  /.netlify/functions/supabase?table=your_table_name
 ```
 
-`AIRTABLE_BASE_ID` değeri sunucu tarafında kullanılır ve istemciden gönderilmez.
+`SUPABASE_SERVICE_ROLE_KEY` değeri sunucu tarafında kullanılır ve istemciden gönderilmez.
 
 ### Custom Domain
 Netlify'de custom domain ayarlamak için:
@@ -122,8 +122,8 @@ Netlify'de custom domain ayarlamak için:
 Hassas bilgileri Netlify environment variables ile saklayın:
 1. Site Settings > Environment variables
 2. Yeni variable ekleyin:
-   - `AIRTABLE_PAT`
-   - `AIRTABLE_BASE_ID`
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
 
 ### HTTPS
 Netlify otomatik olarak HTTPS sağlar. Custom domain için Let's Encrypt sertifikası otomatik oluşturulur.
@@ -195,10 +195,10 @@ Netlify Analytics otomatik olarak aktiftir. Ayrıca Google Analytics eklemek iç
 - Network tab'da cache kontrolü
 - Console'da hata mesajları
 
-**3. Airtable bağlantı hatası**
-- API token kontrolü (`HTTP 401`)
-- Token yetkileri ve Base ID erişimi (`HTTP 403`)
-- Base ID ve tablo isimleri
+**3. Supabase bağlantı hatası**
+- API anahtarı kontrolü (`HTTP 401`)
+- Anahtar yetkileri ve tablo erişimi (`HTTP 403`)
+- Proje URL ve tablo isimleri
 
 **4. Mobile responsive problems**
 - Viewport meta tag kontrolü
