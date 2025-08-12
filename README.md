@@ -99,6 +99,17 @@ TABLO_YAPISI: {
 }
 ```
 
+3. İstemciden yapılacak isteklerde sadece tablo adını geçin. Örnek bir kayıt isteği:
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"records":[{"fields":{"Ad":"Örnek"}}]}' \
+  /.netlify/functions/airtable?table=your_table_name
+```
+
+`AIRTABLE_BASE_ID` değeri sunucu tarafında kullanılır ve istemciden gönderilmez.
+
 ### Custom Domain
 Netlify'de custom domain ayarlamak için:
 1. Site Settings > Domain management
@@ -185,8 +196,8 @@ Netlify Analytics otomatik olarak aktiftir. Ayrıca Google Analytics eklemek iç
 - Console'da hata mesajları
 
 **3. Airtable bağlantı hatası**
-- API token kontrolü
-- CORS ayarları
+- API token kontrolü (`HTTP 401`)
+- Token yetkileri ve Base ID erişimi (`HTTP 403`)
 - Base ID ve tablo isimleri
 
 **4. Mobile responsive problems**
