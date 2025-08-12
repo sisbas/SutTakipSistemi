@@ -355,10 +355,10 @@
 
     const CONFIG = {
       TABLO_YAPISI: {
-        "Yuvalı": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
-        "Karapürçek": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo2" },
-        "Edirköy": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo3" },
-        "Kavacık": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo4" }
+        "Yuvalı": { tablo: "Tablo1" },
+        "Karapürçek": { tablo: "Tablo2" },
+        "Edirköy": { tablo: "Tablo3" },
+        "Kavacık": { tablo: "Tablo4" }
       }
     };
 
@@ -384,10 +384,10 @@
     async function airtableVerileriniYukle() {
       try {
         const tumVeriler = [];
-        for (const [koy, { baseId, tablo }] of Object.entries(CONFIG.TABLO_YAPISI)) {
+        for (const [koy, { tablo }] of Object.entries(CONFIG.TABLO_YAPISI)) {
           let offset = "";
           do {
-            const url = `/.netlify/functions/airtable?baseId=${baseId}&table=${encodeURIComponent(tablo)}&pageSize=100${offset ? `&offset=${offset}` : ""}`;
+            const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}&pageSize=100${offset ? `&offset=${offset}` : ""}`;
             const yanit = await fetch(url);
             const data = await yanit.json();
             data.records.forEach(rec => {
@@ -583,10 +583,10 @@
 
       const recId = id.split('-')[0];
       const ogunAlan = id.endsWith('-S') ? 'Sabah Süt (L)' : 'Akşam Süt (L)';
-      const { baseId, tablo } = CONFIG.TABLO_YAPISI[mevcut.koy] || {};
-      if (!baseId || !tablo) return;
+      const { tablo } = CONFIG.TABLO_YAPISI[mevcut.koy] || {};
+      if (!tablo) return;
       try {
-        await fetch(`/.netlify/functions/airtable?baseId=${baseId}&table=${encodeURIComponent(tablo)}&recordId=${recId}`, {
+        await fetch(`/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}&recordId=${recId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json'
