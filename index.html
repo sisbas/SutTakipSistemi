@@ -423,11 +423,11 @@
       });
       localStorage.setItem('sutVerileri', JSON.stringify(sutVerileri));
 
-      // Airtable'a kaydet
+      // Supabase'e kaydet
       try {
         if (navigator.onLine) {
           for (const formData of kayitlar) {
-            await airtableKaydet(formData);
+            await supabaseKaydet(formData);
           }
           gosterMesaj("✅ Kayıt başarıyla tamamlandı!", "success");
         } else {
@@ -443,25 +443,25 @@
       }
     }
     
-    // Airtable kayıt fonksiyonu
-    async function airtableKaydet(formData) {
+    // Supabase kayıt fonksiyonu
+    async function supabaseKaydet(formData) {
       const { tablo } = CONFIG.TABLO_YAPISI[formData.koy];
-      const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}`;
+      const url = `/.netlify/functions/supabase?table=${encodeURIComponent(tablo)}`;
       
       const veri = {
         records: [{
           fields: {
-            "Müstahsil Adı": formData.musta,
-            "Tarih": formData.tarih,
-            "Sabah Süt (L)": formData.ogun === "Sabah" ? formData.miktar : 0,
-            "Akşam Süt (L)": formData.ogun === "Akşam" ? formData.miktar : 0,
-            "Toplam Süt (L)": formData.miktar,
-            "Köy": formData.koy,
-            "Kayıt Tarihi": new Date().toISOString()
+            musta: formData.musta,
+            tarih: formData.tarih,
+            sabah_sut: formData.ogun === "Sabah" ? formData.miktar : 0,
+            aksam_sut: formData.ogun === "Akşam" ? formData.miktar : 0,
+            toplam_sut: formData.miktar,
+            koy: formData.koy,
+            kayit_tarihi: new Date().toISOString()
           }
         }]
       };
-      
+
       const yanit = await fetch(url, {
         method: "POST",
         headers: {
@@ -474,8 +474,9 @@
         let detay = "";
         try {
           const errJson = await yanit.json();
-          if (errJson.error && errJson.error.message) {
-            detay = " - " + errJson.error.message;
+          const msg = errJson.error?.message || errJson.message;
+          if (msg) {
+            detay = " - " + msg;
           }
         } catch (e) {
           // JSON parse hatası varsa detay ekleme

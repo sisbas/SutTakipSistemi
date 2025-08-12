@@ -373,7 +373,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       mustahsilListesiniDoldur();
       tarihFiltreleriniAyarla();
-      airtableVerileriniYukle();
+      supabaseVerileriniYukle();
 
       // Service Worker kayıt
       if ('serviceWorker' in navigator) {
@@ -381,40 +381,35 @@
       }
     });
 
-    async function airtableVerileriniYukle() {
+    async function supabaseVerileriniYukle() {
       try {
         const tumVeriler = [];
         for (const [koy, { tablo }] of Object.entries(CONFIG.TABLO_YAPISI)) {
-          let offset = "";
-          do {
-            const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}&pageSize=100${offset ? `&offset=${offset}` : ""}`;
-            const yanit = await fetch(url);
-            const data = await yanit.json();
-            data.records.forEach(rec => {
-              const f = rec.fields;
-              if (f["Sabah Süt (L)"] > 0) {
-                tumVeriler.push({
-                  id: rec.id + "-S",
-                  koy: f["Köy"] || koy,
-                  musta: f["Müstahsil Adı"] || "",
-                  tarih: f["Tarih"],
-                  ogun: "Sabah",
-                  miktar: Number(f["Sabah Süt (L)"])
-                });
-              }
-              if (f["Akşam Süt (L)"] > 0) {
-                tumVeriler.push({
-                  id: rec.id + "-A",
-                  koy: f["Köy"] || koy,
-                  musta: f["Müstahsil Adı"] || "",
-                  tarih: f["Tarih"],
-                  ogun: "Akşam",
-                  miktar: Number(f["Akşam Süt (L)"])
-                });
-              }
-            });
-            offset = data.offset;
-          } while (offset);
+          const url = `/.netlify/functions/supabase?table=${encodeURIComponent(tablo)}`;
+          const yanit = await fetch(url);
+          const data = await yanit.json();
+          data.forEach(rec => {
+            if (rec.sabah_sut > 0) {
+              tumVeriler.push({
+                id: rec.id + "-S",
+                koy: rec.koy || koy,
+                musta: rec.musta || "",
+                tarih: rec.tarih,
+                ogun: "Sabah",
+                miktar: Number(rec.sabah_sut)
+              });
+            }
+            if (rec.aksam_sut > 0) {
+              tumVeriler.push({
+                id: rec.id + "-A",
+                koy: rec.koy || koy,
+                musta: rec.musta || "",
+                tarih: rec.tarih,
+                ogun: "Akşam",
+                miktar: Number(rec.aksam_sut)
+              });
+            }
+          });
         }
         sutVerileri = tumVeriler;
         filtreliVeriler = [...sutVerileri];
@@ -423,7 +418,7 @@
         raporlariFiltrele();
         grafikleriCiz();
       } catch (e) {
-        console.error('Airtable verileri alınamadı', e);
+        console.error('Supabase verileri alınamadı', e);
       }
     }
     
@@ -582,11 +577,11 @@
       grafikleriCiz();
 
       const recId = id.split('-')[0];
-      const ogunAlan = id.endsWith('-S') ? 'Sabah Süt (L)' : 'Akşam Süt (L)';
+      const ogunAlan = id.endsWith('-S') ? 'sabah_sut' : 'aksam_sut';
       const { tablo } = CONFIG.TABLO_YAPISI[mevcut.koy] || {};
       if (!tablo) return;
       try {
-        await fetch(`/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}&recordId=${recId}`, {
+        await fetch(`/.netlify/functions/supabase?table=${encodeURIComponent(tablo)}&recordId=${recId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json'
@@ -594,7 +589,7 @@
           body: JSON.stringify({ fields: { [ogunAlan]: yeniMiktar } })
         });
       } catch (e) {
-        console.error('Airtable güncelleme hatası', e);
+        console.error('Supabase güncelleme hatası', e);
       }
     }
     
@@ -992,7 +987,7 @@
     
     // Veri güncelleme kontrolü
     function veriGuncellemeKontrol() {
-      airtableVerileriniYukle();
+      supabaseVerileriniYukle();
     }
     
     // 30 saniyede bir veri kontrolü
