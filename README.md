@@ -87,18 +87,14 @@ sut-takip-sistemi/
 ## ⚙️ Yapılandırma
 
 ### Airtable API Ayarları
-1. `index.html` dosyasındaki API token'ı güncelleyin:
-```javascript
-const CONFIG = {
-  TOKEN: "your_airtable_token_here",
-  // ...
-};
-```
+1. Netlify panelinde aşağıdaki ortam değişkenlerini tanımlayın:
+   - `AIRTABLE_PAT`: Airtable Personal Access Token
+   - `AIRTABLE_BASE_ID`: Airtable Base ID (ör. `appngTzrsiNEo3rIN`)
 
-2. Base ID ve tablo isimlerini kontrol edin:
+2. `index.html` ve `raporlar.html` dosyalarında yalnızca tablo adlarını tanımlayın:
 ```javascript
 TABLO_YAPISI: {
-  "Köy 1": { baseId: "your_base_id", tablo: "your_table_name" }
+  "Köy 1": { tablo: "your_table_name" }
   // ...
 }
 ```
@@ -115,7 +111,7 @@ Netlify'de custom domain ayarlamak için:
 Hassas bilgileri Netlify environment variables ile saklayın:
 1. Site Settings > Environment variables
 2. Yeni variable ekleyin:
-   - `AIRTABLE_TOKEN`
+   - `AIRTABLE_PAT`
    - `AIRTABLE_BASE_ID`
 
 ### HTTPS

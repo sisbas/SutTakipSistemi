@@ -327,10 +327,10 @@
       EMAIL_USER_ID: "your_emailjs_user_id", // EmailJS User ID
       EMAIL_RECIPIENT: "saraysut-59@hotmail.com.tr", // Rapor gönderim adresi
       TABLO_YAPISI: {
-        "Yuvalı": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo1" },
-        "Karapürçek": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo2" },
-        "Edirköy": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo3" },
-        "Kavacık": { baseId: "appngTzrsiNEo3rIN", tablo: "Tablo4" }
+        "Yuvalı": { tablo: "Tablo1" },
+        "Karapürçek": { tablo: "Tablo2" },
+        "Edirköy": { tablo: "Tablo3" },
+        "Kavacık": { tablo: "Tablo4" }
       },
       MUSTAHSIL_LISTESI: {
         "Yuvalı": ["Ayhan Yüksel","Süleyman Anlar","Engin Çıcan","Selahattin Arslan","Nusret Keskin","Gökhan Keskin","Ahmet Gökgöz","Hüsnü Egen","İsmail Atabey","Emine Atabey","Berrin Batı","Bayram Ali Gürbüz","Şükrüye Can","İbrahim Duraklı","Mehmet Bayraktar","Kemal Erçık","Mithat Acar","Nejat Günan","Ayşe Yalçın","Bilgin Keskin","Nevin Ercan","Süleyman Boylu","Ayşe Yüksel","Ercan Gözüaçık"],
@@ -444,8 +444,8 @@
     
     // Airtable kayıt fonksiyonu
     async function airtableKaydet(formData) {
-      const { baseId, tablo } = CONFIG.TABLO_YAPISI[formData.koy];
-      const url = `/.netlify/functions/airtable?baseId=${baseId}&table=${encodeURIComponent(tablo)}`;
+      const { tablo } = CONFIG.TABLO_YAPISI[formData.koy];
+      const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}`;
       
       const veri = {
         records: [{
