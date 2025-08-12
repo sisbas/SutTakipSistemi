@@ -91,24 +91,24 @@ sut-takip-sistemi/
    - `AIRTABLE_PAT`: Airtable Personal Access Token (varsayılan: `patsJ4tw6oyhjni4x.f54fb49a0f6c7aa312e821b2513bcf238c49136d78de1e597e00c380bed5b207`)
    - `AIRTABLE_BASE_ID`: Airtable Base ID (varsayılan: `appngTzrsiNEo3rIN`)
 
-2. `index.html` ve `raporlar.html` dosyalarında yalnızca tablo adlarını tanımlayın:
+2. `index.html` ve `raporlar.html` dosyalarında tablo adlarını ve gerekirse Base ID'leri tanımlayın:
 ```javascript
 TABLO_YAPISI: {
-  "Köy 1": { tablo: "your_table_name" }
+  "Köy 1": { tablo: "your_table_name", baseId: "appXXXXXXXXXXXXXX" }
   // ...
 }
 ```
 
-3. İstemciden yapılacak isteklerde sadece tablo adını geçin. Örnek bir kayıt isteği:
+3. İstemciden yapılacak isteklerde tablo adıyla birlikte Base ID gönderilebilir:
 
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
   -d '{"records":[{"fields":{"Ad":"Örnek"}}]}' \
-  /.netlify/functions/airtable?table=your_table_name
+  "/.netlify/functions/airtable?table=your_table_name&baseId=appXXXXXXXXXXXXXX"
 ```
 
-`AIRTABLE_BASE_ID` değeri sunucu tarafında kullanılır ve istemciden gönderilmez.
+`AIRTABLE_BASE_ID` değeri tanımlıysa istemci tarafından gönderilen `baseId` ile değiştirilebilir.
 
 ### Custom Domain
 Netlify'de custom domain ayarlamak için:

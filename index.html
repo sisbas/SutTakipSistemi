@@ -327,6 +327,7 @@
       EMAIL_TEMPLATE_ID: "template_15gun_rapor", // EmailJS Template ID
       EMAIL_USER_ID: "your_emailjs_user_id", // EmailJS User ID
       EMAIL_RECIPIENT: "saraysut-59@hotmail.com.tr", // Rapor gönderim adresi
+      AIRTABLE_BASE_ID: "appngTzrsiNEo3rIN", // Varsayılan Airtable Base ID
       TABLO_YAPISI: {
         "Yuvalı": { tablo: "Tablo1" },
         "Karapürçek": { tablo: "Tablo2" },
@@ -445,8 +446,9 @@
     
     // Airtable kayıt fonksiyonu
     async function airtableKaydet(formData) {
-      const { tablo } = CONFIG.TABLO_YAPISI[formData.koy];
-      const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}`;
+      const { tablo, baseId } = CONFIG.TABLO_YAPISI[formData.koy];
+      const bId = baseId || CONFIG.AIRTABLE_BASE_ID;
+      const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}${bId ? `&baseId=${encodeURIComponent(bId)}` : ""}`;
       
       const veri = {
         records: [{
