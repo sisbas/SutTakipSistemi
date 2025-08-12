@@ -2,6 +2,7 @@ const BASE_ID = process.env.AIRTABLE_BASE_ID || 'appngTzrsiNEo3rIN';
 
 exports.handler = async function(event) {
   const { httpMethod, queryStringParameters = {} } = event;
+  const { httpMethod, queryStringParameters } = event;
   const { table, recordId, offset, pageSize } = queryStringParameters;
 
   if (!table) {
@@ -12,6 +13,8 @@ exports.handler = async function(event) {
   }
 
   let url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(table)}`;
+  const baseId = queryStringParameters.baseId || BASE_ID;
+  let url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`;
   if (recordId) {
     url += `/${recordId}`;
   }
