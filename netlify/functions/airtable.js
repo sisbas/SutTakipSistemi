@@ -1,7 +1,7 @@
 const https = require('https');
 
 const DEFAULT_BASE_ID = process.env.AIRTABLE_BASE_ID || 'appngTzrsiNEo3rIN';
-const TOKEN = process.env.AIRTABLE_PAT || 'patsJ4tw6oyhjni4x.f54fb49a0f6c7aa312e821b2513bcf238c49136d78de1e597e00c380bed5b207';
+const TOKEN = process.env.AIRTABLE_PAT || 'patsJ4tw6oyhjni4x.5bc8cb0bd6e294bf21f49fb569b069ecfa4238828330459fe19fd9aee5dbeb2b';
 
 exports.handler = async function(event) {
   try {
