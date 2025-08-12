@@ -334,7 +334,6 @@
   <script>
     // Sabitler ve yapılandırma
     const CONFIG = {
-      TOKEN: "process.env.AIRTABLE_PAT",
       EMAIL_API_URL: "https://api.emailjs.com/api/v1.0/email/send", // EmailJS API
       EMAIL_SERVICE_ID: "service_sut_takip", // EmailJS Service ID
       EMAIL_TEMPLATE_ID: "template_15gun_rapor", // EmailJS Template ID
@@ -459,7 +458,7 @@
     // Airtable kayıt fonksiyonu
     async function airtableKaydet(formData) {
       const { baseId, tablo } = CONFIG.TABLO_YAPISI[formData.koy];
-      const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tablo)}`;
+      const url = `/.netlify/functions/airtable?baseId=${baseId}&table=${encodeURIComponent(tablo)}`;
       
       const veri = {
         records: [{
@@ -478,7 +477,6 @@
       const yanit = await fetch(url, {
         method: "POST",
         headers: {
-          "Authorization": "Bearer " + CONFIG.TOKEN,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(veri)
