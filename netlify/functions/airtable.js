@@ -13,6 +13,12 @@ exports.handler = async function(event) {
       body: JSON.stringify({ error: 'AIRTABLE_PAT not configured' })
     };
   }
+const BASE_ID = process.env.AIRTABLE_BASE_ID || 'appngTzrsiNEo3rIN';
+
+exports.handler = async function (event) {
+  const { httpMethod, queryStringParameters = {} } = event;
+  const { table, recordId, offset, pageSize, baseId } = queryStringParameters;
+
 
   if (!table) {
     return {
@@ -22,6 +28,9 @@ exports.handler = async function(event) {
   }
 
   let path = `/v0/${BASE_ID}/${encodeURIComponent(table)}`;
+
+  const resolvedBaseId = baseId || BASE_ID;
+  let url = `https://api.airtable.com/v0/${resolvedBaseId}/${encodeURIComponent(table)}`;
   if (recordId) {
     path += `/${recordId}`;
   }
