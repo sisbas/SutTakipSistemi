@@ -87,9 +87,9 @@ sut-takip-sistemi/
 ## ⚙️ Yapılandırma
 
 ### Airtable API Ayarları
-1. Netlify panelinde aşağıdaki ortam değişkenlerini tanımlayın:
-   - `AIRTABLE_PAT`: Airtable Personal Access Token
-   - `AIRTABLE_BASE_ID`: Airtable Base ID (ör. `appngTzrsiNEo3rIN`)
+1. Netlify panelinde aşağıdaki ortam değişkenlerini tanımlayın (tanımlanmazsa proje içindeki varsayılanlar kullanılır):
+   - `AIRTABLE_PAT`: Airtable Personal Access Token (varsayılan: `patsJ4tw6oyhjni4x.f54fb49a0f6c7aa312e821b2513bcf238c49136d78de1e597e00c380bed5b207`)
+   - `AIRTABLE_BASE_ID`: Airtable Base ID (varsayılan: `appngTzrsiNEo3rIN`)
 
 2. `index.html` ve `raporlar.html` dosyalarında yalnızca tablo adlarını tanımlayın:
 ```javascript
