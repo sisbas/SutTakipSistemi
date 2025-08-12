@@ -1,14 +1,17 @@
+const BASE_ID = process.env.AIRTABLE_BASE_ID || 'appngTzrsiNEo3rIN';
+
 exports.handler = async function(event) {
   const { httpMethod, queryStringParameters } = event;
-  const { baseId, table, recordId, offset, pageSize } = queryStringParameters;
+  const { table, recordId, offset, pageSize } = queryStringParameters;
 
-  if (!baseId || !table) {
+  if (!table) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'baseId and table are required' })
+      body: JSON.stringify({ error: 'table is required' })
     };
   }
 
+  const baseId = queryStringParameters.baseId || BASE_ID;
   let url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`;
   if (recordId) {
     url += `/${recordId}`;
