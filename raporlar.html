@@ -354,6 +354,7 @@
     let siralamaDurumu = { alan: '', yön: 'asc' };
 
     const CONFIG = {
+      AIRTABLE_BASE_ID: "appngTzrsiNEo3rIN",
       TABLO_YAPISI: {
         "Yuvalı": { tablo: "Tablo1" },
         "Karapürçek": { tablo: "Tablo2" },
@@ -384,10 +385,11 @@
     async function airtableVerileriniYukle() {
       try {
         const tumVeriler = [];
-        for (const [koy, { tablo }] of Object.entries(CONFIG.TABLO_YAPISI)) {
+        for (const [koy, { tablo, baseId }] of Object.entries(CONFIG.TABLO_YAPISI)) {
           let offset = "";
+          const bId = baseId || CONFIG.AIRTABLE_BASE_ID;
           do {
-            const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}&pageSize=100${offset ? `&offset=${offset}` : ""}`;
+            const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}&pageSize=100${offset ? `&offset=${offset}` : ""}${bId ? `&baseId=${encodeURIComponent(bId)}` : ""}`;
             const yanit = await fetch(url);
             const data = await yanit.json();
             data.records.forEach(rec => {
@@ -583,10 +585,11 @@
 
       const recId = id.split('-')[0];
       const ogunAlan = id.endsWith('-S') ? 'Sabah Süt (L)' : 'Akşam Süt (L)';
-      const { tablo } = CONFIG.TABLO_YAPISI[mevcut.koy] || {};
+      const { tablo, baseId } = CONFIG.TABLO_YAPISI[mevcut.koy] || {};
+      const bId = baseId || CONFIG.AIRTABLE_BASE_ID;
       if (!tablo) return;
       try {
-        await fetch(`/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}&recordId=${recId}`, {
+        await fetch(`/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}&recordId=${recId}${bId ? `&baseId=${encodeURIComponent(bId)}` : ""}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json'
