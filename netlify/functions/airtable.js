@@ -1,3 +1,4 @@
+const fetch = require('node-fetch');
 const https = require('https');
 
 const BASE_ID = process.env.AIRTABLE_BASE_ID || 'appngTzrsiNEo3rIN';
