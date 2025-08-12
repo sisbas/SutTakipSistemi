@@ -291,18 +291,6 @@
     <div id="ayarlar" class="tab-content">
       <h2>Sistem Ayarları</h2>
       
-      <div class="form-section">
-        <div class="form-group">
-          <label>Airtable API Token:</label>
-          <input type="password" id="api-token" placeholder="Token giriniz">
-        </div>
-        
-        <div class="form-group">
-          <label>Base ID:</label>
-          <input type="text" id="base-id" placeholder="Base ID giriniz">
-        </div>
-      </div>
-      
       <div class="email-status">
         <h3>📧 E-posta Rapor Sistemi</h3>
         <p><strong>Gönderim Adresi:</strong> <span id="email-alici"></span></p>
@@ -311,9 +299,8 @@
         <p><strong>Sonraki Gönderim:</strong> <span id="sonraki-email-tarihi">-</span></p>
         <button class="btn btn-secondary" onclick="testEmailGonder()">📧 Test E-posta Gönder</button>
       </div>
-      
+
       <div style="text-align: center;">
-        <button class="btn" onclick="ayarlariKaydet()">💾 Ayarları Kaydet</button>
         <button class="btn btn-secondary" onclick="verileriYedekle()">💾 Veri Yedekle</button>
       </div>
       
@@ -334,7 +321,6 @@
   <script>
     // Sabitler ve yapılandırma
     const CONFIG = {
-      TOKEN: "process.env.AIRTABLE_PAT",
       EMAIL_API_URL: "https://api.emailjs.com/api/v1.0/email/send", // EmailJS API
       EMAIL_SERVICE_ID: "service_sut_takip", // EmailJS Service ID
       EMAIL_TEMPLATE_ID: "template_15gun_rapor", // EmailJS Template ID
@@ -459,7 +445,7 @@
     // Airtable kayıt fonksiyonu
     async function airtableKaydet(formData) {
       const { baseId, tablo } = CONFIG.TABLO_YAPISI[formData.koy];
-      const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tablo)}`;
+      const url = `/.netlify/functions/airtable?baseId=${baseId}&table=${encodeURIComponent(tablo)}`;
       
       const veri = {
         records: [{
@@ -478,7 +464,6 @@
       const yanit = await fetch(url, {
         method: "POST",
         headers: {
-          "Authorization": "Bearer " + CONFIG.TOKEN,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(veri)
@@ -745,16 +730,6 @@ Sistem: https://your-domain.netlify.app
       return response;
     }
     
-    // Ayarları kaydet
-    function ayarlariKaydet() {
-      const apiToken = document.getElementById("api-token").value;
-      const baseId = document.getElementById("base-id").value;
-      
-      if (apiToken) localStorage.setItem('airtable-token', apiToken);
-      if (baseId) localStorage.setItem('airtable-base', baseId);
-      
-      gosterMesaj("Ayarlar kaydedildi.", "success");
-    }
     
     // Veri yedekleme
     function verileriYedekle() {

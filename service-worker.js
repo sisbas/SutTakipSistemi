@@ -13,7 +13,7 @@ const urlsToCache = [
 
 // API endpoint'leri
 const API_ENDPOINTS = [
-  "https://api.airtable.com"
+  self.location.origin + "/.netlify/functions/airtable"
 ];
 
 // Service Worker kurulumu
