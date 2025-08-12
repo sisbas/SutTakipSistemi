@@ -318,6 +318,7 @@
     📱 Uygulamayı Yükle
   </button>
   
+  <script src="js/errorHandler.js"></script>
   <script>
     // Sabitler ve yapılandırma
     const CONFIG = {
@@ -360,7 +361,7 @@
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js')
           .then(() => console.log('SW kayıt başarılı'))
-          .catch(err => console.log('SW kayıt hatası:', err));
+          .catch(err => handleAppError(err, 'Service Worker'));
       }
       
       // 15 günlük e-posta kontrolü için timer
@@ -438,7 +439,7 @@
         sistemDurumunuGuncelle();
 
       } catch (err) {
-        gosterMesaj("⚠️ Sunucu hatası: " + err.message, "error");
+        handleAppError(err, 'Veri Kaydetme');
       }
     }
     
@@ -595,7 +596,7 @@
         console.log("✅ 15 günlük rapor otomatik olarak gönderildi");
 
       } catch (error) {
-        console.error("❌ Otomatik e-posta gönderim hatası:", error);
+        handleAppError(error, 'Otomatik E-posta');
       }
     }
     
@@ -606,7 +607,7 @@
         await emailGonder(rapor, true);
         gosterMesaj("✅ Test e-postası gönderildi!", "success");
       } catch (error) {
-        gosterMesaj("❌ E-posta gönderim hatası: " + error.message, "error");
+        handleAppError(error, 'Test E-posta');
       }
     }
     
