@@ -349,23 +349,31 @@
     
     // DOM yüklendiğinde
     document.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('tarih').value = new Date().toISOString().split('T')[0];
-      istatistikleriGuncelle();
-      sistemDurumunuGuncelle();
-      document.getElementById('email-alici').textContent = CONFIG.EMAIL_RECIPIENT;
-      emailDurumunuGuncelle();
-      networkStatusUpdate();
-      emailGonderimKontrol();
-      
-      // Service Worker kayıt
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then(() => console.log('SW kayıt başarılı'))
-          .catch(err => handleAppError(err, 'Service Worker'));
-      }
-      
-      // 15 günlük e-posta kontrolü için timer
-      setInterval(emailGonderimKontrol, 60000 * 60); // Her saat kontrol et
+      window.AppErrorBoundary.safeExecute(() => {
+        document.getElementById('tarih').value = new Date().toISOString().split('T')[0];
+        istatistikleriGuncelle();
+        sistemDurumunuGuncelle();
+        document.getElementById('email-alici').textContent = CONFIG.EMAIL_RECIPIENT;
+        emailDurumunuGuncelle();
+        networkStatusUpdate();
+        emailGonderimKontrol();
+
+        // Service Worker kayıt
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(() => console.log('SW kayıt başarılı'))
+            .catch(err => handleAppError(err, {
+              context: 'Service Worker',
+              userMessage: 'Çevrimdışı mod devreye alınamadı. Uygulama çevrimdışı sınırlı çalışabilir.'
+            }));
+        }
+
+        // 15 günlük e-posta kontrolü için timer
+        setInterval(emailGonderimKontrol, 60000 * 60); // Her saat kontrol et
+      }, {
+        context: 'Uygulama Başlatma',
+        userMessage: 'Uygulama başlatılırken beklenmeyen bir sorun oluştu.'
+      });
     });
     
     // Tab değiştirme
@@ -403,7 +411,10 @@
 
       // Validasyon
       if (!koy || !musta || !tarih || (isNaN(sabahMiktar) && isNaN(aksamMiktar))) {
-        gosterMesaj("Lütfen tüm alanları doldurun.", "error");
+        handleAppError(new window.AppErrors.ValidationError('Eksik ya da hatalı alanlar mevcut.'), {
+          context: 'Form Doğrulama',
+          userMessage: 'Lütfen tüm alanları doldurun ve miktar alanlarına sayı girin.'
+        });
         return;
       }
 
@@ -425,11 +436,22 @@
 
       // Airtable'a kaydet
       try {
+        let tumKayitlarGonderildi = true;
+
         if (navigator.onLine) {
-          for (const formData of kayitlar) {
-            await airtableKaydet(formData);
+          for (const [index, formData] of kayitlar.entries()) {
+            const sonuc = await airtableKaydet(formData, { silent: index > 0 });
+            if (!sonuc) {
+              tumKayitlarGonderildi = false;
+              break;
+            }
           }
-          gosterMesaj("✅ Kayıt başarıyla tamamlandı!", "success");
+
+          if (tumKayitlarGonderildi) {
+            gosterMesaj("✅ Kayıt başarıyla tamamlandı!", "success");
+          } else {
+            gosterMesaj("⚠️ Kayıt yerel olarak saklandı. İnternet bağlantınızı kontrol edip tekrar deneyin.", "error");
+          }
         } else {
           gosterMesaj("📱 Offline kaydedildi, çevrimiçi olduğunuzda senkronize edilecek.", "success");
         }
@@ -439,15 +461,19 @@
         sistemDurumunuGuncelle();
 
       } catch (err) {
-        handleAppError(err, 'Veri Kaydetme');
+        handleAppError(err, {
+          context: 'Veri Kaydetme',
+          userMessage: 'Kayıt sırasında beklenmeyen bir sorun oluştu. Verileriniz yerel olarak saklandı.'
+        });
       }
     }
     
     // Airtable kayıt fonksiyonu
-    async function airtableKaydet(formData) {
+    async function airtableKaydet(formData, options = {}) {
       const { tablo } = CONFIG.TABLO_YAPISI[formData.koy];
       const url = `/.netlify/functions/airtable?table=${encodeURIComponent(tablo)}`;
-      
+      const context = `Airtable API - ${formData.koy} (${formData.ogun})`;
+
       const veri = {
         records: [{
           fields: {
@@ -461,27 +487,45 @@
           }
         }]
       };
-      
-      const yanit = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(veri)
-      });
 
-      if (!yanit.ok) {
-        let detay = "";
-        try {
-          const errJson = await yanit.json();
-          if (errJson.error && errJson.error.message) {
-            detay = " - " + errJson.error.message;
+      return window.AppErrorBoundary.safeApiCall(async () => {
+        const yanit = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(veri)
+        });
+
+        if (!yanit.ok) {
+          let detay = "";
+          try {
+            const hataJson = await yanit.clone().json();
+            if (hataJson.error && hataJson.error.message) {
+              detay = " - " + hataJson.error.message;
+            }
+          } catch (parseError) {
+            // Ayrıntı bulunamadı, varsayılan mesaj kullanılacak
           }
-        } catch (e) {
-          // JSON parse hatası varsa detay ekleme
+
+          throw new window.AppErrors.NetworkError(`HTTP ${yanit.status}${detay}`, {
+            context,
+            details: {
+              status: yanit.status,
+              tablo,
+              musta: formData.musta,
+              ogun: formData.ogun
+            }
+          });
         }
-        throw new Error(`HTTP ${yanit.status}${detay}`);
-      }
+
+        return true;
+      }, {
+        context,
+        userMessage: 'Sunucuya bağlanırken sorun yaşandı. Kayıtlarınız yerel olarak saklandı.',
+        fallbackValue: false,
+        silent: options && options.silent === true
+      });
     }
     
     // Form temizleme
@@ -585,7 +629,10 @@
     async function otomatikEmailGonder() {
       try {
         const rapor = onBesGunlukRaporOlustur();
-        await emailGonder(rapor, false);
+        const sonuc = await emailGonder(rapor, false);
+        if (!sonuc) {
+          return;
+        }
 
         const bugun = new Date();
         emailSettings.sonGonderim = bugun.toISOString();
@@ -596,7 +643,10 @@
         console.log("✅ 15 günlük rapor otomatik olarak gönderildi");
 
       } catch (error) {
-        handleAppError(error, 'Otomatik E-posta');
+        handleAppError(error, {
+          context: 'Otomatik E-posta',
+          userMessage: 'Rapor e-postası hazırlanırken beklenmeyen bir sorun oluştu.'
+        });
       }
     }
     
@@ -604,10 +654,16 @@
     async function testEmailGonder() {
       try {
         const rapor = onBesGunlukRaporOlustur();
-        await emailGonder(rapor, true);
+        const sonuc = await emailGonder(rapor, true);
+        if (!sonuc) {
+          return;
+        }
         gosterMesaj("✅ Test e-postası gönderildi!", "success");
       } catch (error) {
-        handleAppError(error, 'Test E-posta');
+        handleAppError(error, {
+          context: 'Test E-posta',
+          userMessage: 'Test e-postası hazırlanırken beklenmeyen bir sorun oluştu.'
+        });
       }
     }
     
@@ -713,22 +769,36 @@ Sistem: https://your-domain.netlify.app
           report_date: new Date().toLocaleDateString('tr-TR')
         }
       };
-      
-      // EmailJS kullanarak e-posta gönder
-      // Not: Gerçek uygulamada EmailJS hesabı kurulmalı ve yapılandırılmalı
-      const response = await fetch(CONFIG.EMAIL_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emailData)
+
+      const context = testModu ? 'E-posta API (Test)' : 'E-posta API';
+
+      return window.AppErrorBoundary.safeApiCall(async () => {
+        const response = await fetch(CONFIG.EMAIL_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(emailData)
+        });
+
+        if (!response.ok) {
+          throw new window.AppErrors.NetworkError(`E-posta gönderim hatası (${response.status})`, {
+            context,
+            details: {
+              status: response.status,
+              statusText: response.statusText
+            }
+          });
+        }
+
+        return response;
+      }, {
+        context,
+        userMessage: testModu
+          ? 'Test e-postası gönderilemedi. Lütfen internet bağlantınızı kontrol edin.'
+          : 'Rapor e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin.',
+        fallbackValue: null
       });
-      
-      if (!response.ok) {
-        throw new Error('E-posta gönderim hatası');
-      }
-      
-      return response;
     }
     
     
